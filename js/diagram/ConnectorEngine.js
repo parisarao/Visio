@@ -56,6 +56,7 @@
             const path = el('path', {
                 d: pathD,
                 class: 'connector-path',
+                fill: 'none',
                 stroke: color,
                 'stroke-width': '1.8',
                 'marker-end': markerEnd,

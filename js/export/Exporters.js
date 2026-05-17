@@ -59,6 +59,13 @@
             const overlay = clone.querySelector('#overlay-layer');
             if (overlay) overlay.innerHTML = '';
 
+            // Some SVG rasterizers used by PDF/image export do not reliably
+            // apply CSS fill:none to open connector paths, causing black wedges.
+            clone.querySelectorAll('.connector-path').forEach(path => {
+                path.setAttribute('fill', 'none');
+                path.setAttribute('fill-opacity', '0');
+            });
+
             // Apply solid white or light canvas background color depending on theme
             const gridBg = clone.querySelector('#grid-bg');
             const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
