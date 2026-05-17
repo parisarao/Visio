@@ -94,23 +94,58 @@
             try {
                 bus().emit('toast', 'info', 'Generating PDF...');
                 const { clone, width, height } = this._prepareExportSVG();
-                const { jsPDF } = window.jspdf;
+                const { jsPDF } = window.jspdf || {};
+                if (!jsPDF) throw new Error('jsPDF library is not loaded');
 
-                // Configure PDF size to match diagram dimensions
-                const doc = new jsPDF({
-                    orientation: width > height ? 'landscape' : 'portrait',
-                    unit: 'pt',
-                    format: [width + 40, height + 40]
+                const scale = 2;
+                const canvasW = Math.max(1, Math.round(width * scale));
+                const canvasH = Math.max(1, Math.round(height * scale));
+
+                clone.setAttribute('width', canvasW);
+                clone.setAttribute('height', canvasH);
+
+                const serializer = new XMLSerializer();
+                const svgStr = serializer.serializeToString(clone);
+                const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = canvasW;
+                            canvas.height = canvasH;
+                            const ctx = canvas.getContext('2d');
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, canvasW, canvasH);
+                            ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+                            const pdfWidth = width + 40;
+                            const pdfHeight = height + 40;
+                            const doc = new jsPDF({
+                                orientation: width > height ? 'landscape' : 'portrait',
+                                unit: 'pt',
+                                format: [pdfWidth, pdfHeight]
+                            });
+
+                            const pngData = canvas.toDataURL('image/png');
+                            doc.addImage(pngData, 'PNG', 20, 20, width, height);
+                            doc.save('process-map.pdf');
+                            resolve();
+                        } catch (err) {
+                            reject(err);
+                        } finally {
+                            URL.revokeObjectURL(url);
+                        }
+                    };
+                    img.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        reject(new Error('Could not render diagram for PDF export'));
+                    };
+                    img.src = url;
                 });
-
-                // Temporarily add clone to DOM for svg2pdf
-                clone.style.position = 'absolute';
-                clone.style.left = '-9999px';
-                document.body.appendChild(clone);
-
-                await doc.svg(clone, { x: 20, y: 20, width: width, height: height });
-                doc.save('process-map.pdf');
-                document.body.removeChild(clone);
 
                 bus().emit('toast', 'success', 'PDF exported successfully');
             } catch (err) {
