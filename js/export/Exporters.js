@@ -66,8 +66,8 @@
                 path.setAttribute('fill-opacity', '0');
             });
             clone.querySelectorAll('.connector-label-bg, .connector-group rect').forEach(rect => {
-                rect.setAttribute('fill', 'transparent');
-                rect.setAttribute('fill-opacity', '0');
+                rect.setAttribute('fill', '#ffffff');
+                rect.setAttribute('fill-opacity', '1');
             });
 
             // Apply solid white or light canvas background color depending on theme

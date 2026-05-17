@@ -71,7 +71,7 @@
                 const bg = el('rect', {
                     x: -16, y: -10, width: 32, height: 18, rx: 4,
                     class: 'connector-label-bg',
-                    fill: 'transparent', 'fill-opacity': '0',
+                    fill: '#ffffff', 'fill-opacity': '1',
                     stroke: color, 'stroke-width': '1', opacity: '0.95'
                 });
                 const txt = el('text', {
