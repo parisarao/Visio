@@ -65,6 +65,10 @@
                 path.setAttribute('fill', 'none');
                 path.setAttribute('fill-opacity', '0');
             });
+            clone.querySelectorAll('.connector-label-bg, .connector-group rect').forEach(rect => {
+                rect.setAttribute('fill', 'transparent');
+                rect.setAttribute('fill-opacity', '0');
+            });
 
             // Apply solid white or light canvas background color depending on theme
             const gridBg = clone.querySelector('#grid-bg');

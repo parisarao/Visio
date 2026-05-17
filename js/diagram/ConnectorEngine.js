@@ -70,7 +70,9 @@
                 const labelG = el('g', { transform: `translate(${mid.x},${mid.y})` });
                 const bg = el('rect', {
                     x: -16, y: -10, width: 32, height: 18, rx: 4,
-                    fill: 'var(--bg-secondary)', stroke: color, 'stroke-width': '1', opacity: '0.95'
+                    class: 'connector-label-bg',
+                    fill: 'transparent', 'fill-opacity': '0',
+                    stroke: color, 'stroke-width': '1', opacity: '0.95'
                 });
                 const txt = el('text', {
                     x: 0, y: 0, 'text-anchor': 'middle', 'dominant-baseline': 'central',
