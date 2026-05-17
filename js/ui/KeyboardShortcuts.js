@@ -49,6 +49,13 @@
                     const selId = renderer()._selectedNodeId;
                     if (selId) { e.preventDefault(); state().removeNode(selId); renderer().selectNode(null); }
                 }
+                else if (e.key.toLowerCase() === 'r') {
+                    const selectedEdges = window.PMB.SelectionManager ? window.PMB.SelectionManager.getSelectedEdges() : [];
+                    if (selectedEdges && selectedEdges.length > 0 && window.PMB.EdgeEditor) {
+                        e.preventDefault();
+                        window.PMB.EdgeEditor.resetSelectedEdge();
+                    }
+                }
                 else if (e.key === '+' || e.key === '=') { if (ctrl) { e.preventDefault(); renderer().zoomIn(); } }
                 else if (e.key === '-') { if (ctrl) { e.preventDefault(); renderer().zoomOut(); } }
                 else if (e.key === '0') { if (ctrl) { e.preventDefault(); renderer().fitToScreen(); } }

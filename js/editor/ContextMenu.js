@@ -18,8 +18,11 @@
             svg.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const nodeGroup = e.target.closest('.node-group');
+                const connectorGroup = e.target.closest('.connector-group');
                 if (nodeGroup) {
                     this._showNodeMenu(e, nodeGroup.getAttribute('data-id'));
+                } else if (connectorGroup) {
+                    this._showConnectorMenu(e, connectorGroup.getAttribute('data-edge-id'));
                 } else {
                     this._showCanvasMenu(e);
                 }
@@ -56,6 +59,19 @@
             this._menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
                 state().removeNode(nodeId);
                 renderer().selectNode(null);
+            });
+            this._show(e.clientX, e.clientY);
+        },
+
+        _showConnectorMenu(e, edgeId) {
+            bus().emit('edge:selected', edgeId);
+            this._menu.innerHTML = `
+                <button class="context-menu-item" data-action="reset-line">Reset Line</button>
+            `;
+            this._menu.querySelector('[data-action="reset-line"]').addEventListener('click', () => {
+                if (window.PMB.EdgeEditor) {
+                    window.PMB.EdgeEditor.resetEdge(edgeId);
+                }
             });
             this._show(e.clientX, e.clientY);
         },

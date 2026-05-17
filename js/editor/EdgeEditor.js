@@ -254,6 +254,35 @@
             } else {
                 state().updateNode(node.stepId, { edgeRouting: routing });
             }
+        },
+
+        resetEdge(edgeId) {
+            const allEdges = model().buildEdges(state().getNodes());
+            const edge = allEdges.find(e => e.id === edgeId);
+            if (!edge) return;
+
+            const node = state().getNodes().find(n => n.stepId === edge.source);
+            if (!node || !node.edgeRouting) return;
+
+            let edgeType = 'next';
+            if (edge.type === 'yes') edgeType = 'yes';
+            else if (edge.type === 'no') edgeType = 'no';
+
+            const routing = { ...node.edgeRouting };
+            delete routing[edgeType];
+
+            state().updateNode(node.stepId, { edgeRouting: routing });
+            if (window.PMB.SelectionManager) {
+                window.PMB.SelectionManager.selectMultiple([]);
+                bus().emit('edge:selected', edgeId);
+            }
+            bus().emit('toast', 'success', 'Line reset to automatic route');
+        },
+
+        resetSelectedEdge() {
+            const selectedEdges = window.PMB.SelectionManager ? window.PMB.SelectionManager.getSelectedEdges() : [];
+            if (!selectedEdges || selectedEdges.length === 0) return;
+            this.resetEdge(selectedEdges[0]);
         }
     };
 
