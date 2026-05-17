@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Enterprise-grade Process Map Builder — Create professional flowcharts, swimlane diagrams, and BPMN-style process maps directly in your browser.">
+    <title>Process Map Builder — Enterprise Flowchart Designer</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tabulator CSS -->
+    <link href="https://unpkg.com/tabulator-tables@6.4.0/dist/css/tabulator.min.css" rel="stylesheet">
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="css/main.css">
+
+    <!-- ELK.js -->
+    <script src="https://cdn.jsdelivr.net/npm/elkjs@0.11.1/lib/elk.bundled.js"></script>
+
+    <!-- Tabulator -->
+    <script src="https://unpkg.com/tabulator-tables@6.4.0/dist/js/tabulator.min.js"></script>
+
+    <!-- jsPDF + svg2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.6.0/dist/svg2pdf.umd.min.js"></script>
+
+    <!-- html2canvas for PNG -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <!-- ===== TOP TOOLBAR ===== -->
+    <header id="toolbar" class="toolbar">
+        <div class="toolbar-left">
+            <div class="toolbar-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="var(--accent)"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="var(--accent)" opacity="0.7"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="var(--accent)" opacity="0.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="var(--accent)" opacity="0.3"/></svg>
+                <span class="brand-text">ProcessMap<span class="brand-accent">Builder</span></span>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div style="display:flex; align-items:center; gap:4px;">
+                <input id="diagram-title-input" class="toolbar-title-input" type="text" value="Enterprise Process Map" title="Click to edit diagram title">
+                <button id="btn-diagram-settings" class="toolbar-btn" title="Diagram Settings & Defaults" style="padding:6px; border-radius:var(--radius-sm);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <button id="btn-new" class="toolbar-btn" title="New Diagram (Ctrl+N)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                <span>New</span>
+            </button>
+            <button id="btn-open" class="toolbar-btn" title="Open File (Ctrl+O)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>Open</span>
+            </button>
+            <button id="btn-save" class="toolbar-btn" title="Save (Ctrl+S)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save</span>
+            </button>
+            <div class="toolbar-divider"></div>
+            <button id="btn-undo" class="toolbar-btn" title="Undo (Ctrl+Z)" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            </button>
+            <button id="btn-redo" class="toolbar-btn" title="Redo (Ctrl+Y)" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+            </button>
+            <div class="toolbar-divider"></div>
+            <button id="btn-auto-layout" class="toolbar-btn" title="Auto Layout">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><line x1="10" y1="6.5" x2="14" y2="6.5"/><line x1="17.5" y1="10" x2="17.5" y2="14"/></svg>
+                <span>Auto Layout</span>
+            </button>
+            <button id="btn-validate" class="toolbar-btn" title="Validate Diagram">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Validate</span>
+            </button>
+        </div>
+        <div class="toolbar-right">
+            <div class="toolbar-group">
+                <button id="btn-export" class="toolbar-btn toolbar-btn-dropdown" title="Export">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Export</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="export-dropdown" class="dropdown-menu hidden">
+                    <button id="btn-export-pdf" class="dropdown-item">Export as PDF</button>
+                    <button id="btn-export-png" class="dropdown-item">Export as PNG</button>
+                    <button id="btn-export-jpeg" class="dropdown-item">Export as JPEG</button>
+                    <button id="btn-export-svg" class="dropdown-item">Export as SVG</button>
+                    <div class="dropdown-divider"></div>
+                    <button id="btn-export-json" class="dropdown-item">Export JSON Data</button>
+                </div>
+            </div>
+            <div class="toolbar-divider"></div>
+            <select id="theme-select" class="toolbar-select" title="Theme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="corporate">Corporate</option>
+            </select>
+            <div class="toolbar-divider"></div>
+            <div class="zoom-controls">
+                <button id="btn-zoom-out" class="toolbar-btn-sm" title="Zoom Out">−</button>
+                <span id="zoom-level" class="zoom-label">100%</span>
+                <button id="btn-zoom-in" class="toolbar-btn-sm" title="Zoom In">+</button>
+                <button id="btn-zoom-fit" class="toolbar-btn-sm" title="Fit to Screen">⊡</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="main-container" class="main-container">
+
+        <!-- LEFT PANEL -->
+        <aside id="left-panel" class="panel panel-left">
+            <div class="panel-header">
+                <span>Toolbox</span>
+                <button id="btn-collapse-left" class="panel-collapse-btn" title="Collapse">◀</button>
+            </div>
+            <div class="panel-content">
+                <!-- Shape Palette -->
+                <div class="panel-section">
+                    <div class="panel-section-title">Shapes</div>
+                    <div id="shape-palette" class="shape-palette"></div>
+                </div>
+                <!-- Templates -->
+                <div class="panel-section">
+                    <div class="panel-section-title">Templates</div>
+                    <div id="template-list" class="template-list"></div>
+                </div>
+                <!-- Layout Settings -->
+                <div class="panel-section">
+                    <div class="panel-section-title">Layout Settings</div>
+                    <div class="prop-group">
+                        <label class="prop-label">Min Shape Gap</label>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input id="layout-spacing" class="prop-input" type="range" min="30" max="200" value="80" title="Adjust gap between shapes" style="flex:1;">
+                            <span id="layout-spacing-val" style="font-size:11px; color:var(--text-secondary); min-width:32px; font-weight:600;">80px</span>
+                        </div>
+                    </div>
+                    <div class="prop-group" style="margin-top:8px;">
+                        <label class="prop-label">Flow Direction</label>
+                        <select id="layout-direction" class="prop-select" style="width:100%">
+                            <option value="horizontal">Horizontal (Next to previous)</option>
+                            <option value="vertical">Vertical (Below previous)</option>
+                            <option value="vertical-up">Vertical Up (Above previous)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Swimlane Controls -->
+                <div class="panel-section">
+                    <div class="panel-section-title">Swimlanes</div>
+                    <div id="swimlane-controls" class="swimlane-controls">
+                        <button id="btn-add-lane" class="btn-secondary btn-block">+ Add Swimlane</button>
+                        <select id="lane-orientation" class="toolbar-select" style="width:100%;margin-top:8px">
+                            <option value="horizontal">Horizontal Lanes</option>
+                            <option value="vertical">Vertical Lanes</option>
+                        </select>
+                        <div id="lane-list" class="lane-list"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main id="canvas-container" class="canvas-container">
+            <!-- Floating Expand Buttons -->
+            <button id="btn-expand-left" class="panel-expand-btn left-expand hidden" title="Expand Toolbox">▶</button>
+            <button id="btn-expand-right" class="panel-expand-btn right-expand hidden" title="Expand Properties">◀</button>
+
+            <div id="canvas-wrapper" class="canvas-wrapper">
+                <svg id="diagram-svg" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="var(--connector-color, #64748b)"/>
+                        </marker>
+                        <marker id="arrowhead-yes" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#22c55e"/>
+                        </marker>
+                        <marker id="arrowhead-no" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+                        </marker>
+                        <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--grid-color)" stroke-width="0.5" opacity="0.3"/>
+                        </pattern>
+                        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.15)"/>
+                        </filter>
+                    </defs>
+                    <rect id="grid-bg" width="100%" height="100%" fill="url(#grid-pattern)"/>
+                    <g id="swimlane-layer"></g>
+                    <g id="connector-layer"></g>
+                    <g id="node-layer"></g>
+                    <g id="overlay-layer"></g>
+                </svg>
+            </div>
+            <!-- Minimap -->
+            <div id="minimap" class="minimap">
+                <svg id="minimap-svg" class="minimap-svg"></svg>
+                <div id="minimap-viewport" class="minimap-viewport"></div>
+            </div>
+            <!-- Canvas status -->
+            <div id="canvas-status" class="canvas-status">
+                <span id="node-count">0 nodes</span>
+                <span class="status-sep">|</span>
+                <span id="edge-count">0 edges</span>
+                <span class="status-sep">|</span>
+                <span id="cursor-pos">0, 0</span>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside id="right-panel" class="panel panel-right">
+            <div class="panel-header">
+                <span>Properties</span>
+                <button id="btn-collapse-right" class="panel-collapse-btn" title="Collapse">▶</button>
+            </div>
+            <div class="panel-content">
+                <div id="properties-empty" class="properties-empty hidden">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>Select a node to edit its properties</p>
+                </div>
+                <div id="properties-default" class="properties-form">
+                    <div class="panel-section-title" style="margin-top:0">Diagram Settings</div>
+                    <div class="prop-group">
+                        <label class="prop-label">Diagram Title</label>
+                        <input id="prop-diagram-title" class="prop-input" type="text" placeholder="Diagram Title">
+                    </div>
+                    
+                    <div class="panel-section-title" style="margin-top:16px">Diagram Title Styling</div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Title BG</label>
+                            <div style="display:flex; align-items:center; gap:4px">
+                                <input id="default-title-bg" class="prop-color" type="color" value="#ffffff" disabled style="flex:1; min-width:0; width:auto; height:30px;">
+                                <input id="default-title-bg-trans" type="checkbox" title="Transparent Title BG" checked style="flex-shrink:0;">
+                                <span style="font-size:9px; color:var(--text-secondary); flex-shrink:0;">Trans?</span>
+                            </div>
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Title Font</label>
+                            <input id="default-title-font" class="prop-color" type="color" value="#000000">
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Title Border</label>
+                            <input id="default-title-border" class="prop-color" type="color" value="#000000">
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section-title" style="margin-top:16px">Default Shape Styling</div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Fill Color</label>
+                            <div style="display:flex; align-items:center; gap:4px">
+                                <input id="default-shape-bg" class="prop-color" type="color" value="#ffffff" disabled style="flex:1; min-width:0; width:auto; height:30px;">
+                                <input id="default-shape-bg-trans" type="checkbox" title="Transparent Background" checked style="flex-shrink:0;">
+                                <span style="font-size:9px; color:var(--text-secondary); flex-shrink:0;">Trans?</span>
+                            </div>
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Font Color</label>
+                            <input id="default-shape-font" class="prop-color" type="color" value="#000000">
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Border Color</label>
+                            <input id="default-shape-border" class="prop-color" type="color" value="#000000">
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section-title" style="margin-top:16px">Default Swimlane Styling</div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Header BG</label>
+                            <div style="display:flex; align-items:center; gap:4px">
+                                <input id="default-lane-header-bg" class="prop-color" type="color" value="#ffffff" disabled style="flex:1; min-width:0; width:auto; height:30px;">
+                                <input id="default-lane-header-bg-trans" type="checkbox" title="Transparent Header" checked style="flex-shrink:0;">
+                                <span style="font-size:9px; color:var(--text-secondary); flex-shrink:0;">Trans?</span>
+                            </div>
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Header Font</label>
+                            <input id="default-lane-header-font" class="prop-color" type="color" value="#000000">
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Border Color</label>
+                            <input id="default-lane-border" class="prop-color" type="color" value="#000000">
+                        </div>
+                    </div>
+                </div>
+                <div id="properties-form" class="properties-form hidden">
+                    <div class="prop-group">
+                        <label class="prop-label">Step ID</label>
+                        <input id="prop-step-id" class="prop-input" type="text" readonly>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Step Name</label>
+                        <input id="prop-step-name" class="prop-input" type="text">
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Description</label>
+                        <textarea id="prop-description" class="prop-textarea" rows="2"></textarea>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Shape Type</label>
+                        <select id="prop-shape-type" class="prop-select">
+                            <option value="start">Start</option>
+                            <option value="end">End</option>
+                            <option value="process">Process</option>
+                            <option value="decision">Decision</option>
+                            <option value="document">Document</option>
+                            <option value="database">Database</option>
+                            <option value="manualInput">Manual Input</option>
+                            <option value="delay">Delay</option>
+                            <option value="connector">Connector</option>
+                            <option value="subprocess">Subprocess</option>
+                        </select>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Swimlane</label>
+                        <select id="prop-swimlane" class="prop-select"></select>
+                    </div>
+                    <div class="prop-group" id="prop-layout-flow-group">
+                        <label class="prop-label">Step Flow Direction</label>
+                        <select id="prop-layout-flow" class="prop-select">
+                            <option value="default">Default (Use Global)</option>
+                            <option value="right">Next to (Right)</option>
+                            <option value="down">Below (Down)</option>
+                            <option value="up">Above (Up)</option>
+                        </select>
+                    </div>
+                    <div class="prop-row" id="decision-flow-row" style="display:none;">
+                        <div class="prop-group prop-half">
+                            <label class="prop-label" style="color:#22c55e;">✔ Yes Flow Dir</label>
+                            <select id="prop-yes-flow-dir" class="prop-select">
+                                <option value="default">Default</option>
+                                <option value="right">Right →</option>
+                                <option value="down">Down ↓</option>
+                                <option value="up">Up ↑</option>
+                                <option value="left">Left ←</option>
+                            </select>
+                        </div>
+                        <div class="prop-group prop-half">
+                            <label class="prop-label" style="color:#ef4444;">✘ No Flow Dir</label>
+                            <select id="prop-no-flow-dir" class="prop-select">
+                                <option value="default">Default</option>
+                                <option value="right">Right →</option>
+                                <option value="down">Down ↓</option>
+                                <option value="up">Up ↑</option>
+                                <option value="left">Left ←</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Step Spacing (px)</label>
+                        <input id="prop-step-spacing" class="prop-input" type="number" min="10" max="400" placeholder="Use Global">
+                    </div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">Next Step</label>
+                            <input id="prop-next-step" class="prop-input" type="text">
+                        </div>
+                    </div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">Yes Path</label>
+                            <input id="prop-yes-path" class="prop-input" type="text">
+                        </div>
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">No Path</label>
+                            <input id="prop-no-path" class="prop-input" type="text">
+                        </div>
+                    </div>
+                    <div class="panel-section-title" style="margin-top:12px">Styling</div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Fill</label>
+                            <div style="display:flex; align-items:center; gap:4px">
+                                <input id="prop-bg-color" class="prop-color" type="color" value="#ffffff" disabled style="flex:1; min-width:0; width:auto; height:30px;">
+                                <input id="prop-bg-color-trans" type="checkbox" title="Transparent Background" checked style="flex-shrink:0;">
+                                <span style="font-size:9px; color:var(--text-secondary); flex-shrink:0;">Trans?</span>
+                            </div>
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Font</label>
+                            <input id="prop-font-color" class="prop-color" type="color" value="#000000">
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Border</label>
+                            <input id="prop-border-color" class="prop-color" type="color" value="#000000">
+                        </div>
+                    </div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">Width</label>
+                            <input id="prop-width" class="prop-input" type="number" min="40" max="400" value="140">
+                        </div>
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">Height</label>
+                            <input id="prop-height" class="prop-input" type="number" min="30" max="300" value="60">
+                        </div>
+                    </div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">X Position (px)</label>
+                            <input id="prop-x-pos" class="prop-input" type="number" value="0">
+                        </div>
+                        <div class="prop-group prop-half">
+                            <label class="prop-label">Y Position (px)</label>
+                            <input id="prop-y-pos" class="prop-input" type="number" value="0">
+                        </div>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Connection Label</label>
+                        <input id="prop-conn-label" class="prop-input" type="text">
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Notes</label>
+                        <textarea id="prop-notes" class="prop-textarea" rows="3"></textarea>
+                    </div>
+                </div>
+                
+                <div id="properties-multiselect" class="properties-form hidden">
+                    <div class="panel-section-title" style="margin-top:0; display:flex; align-items:center; justify-content:space-between; border-bottom: 2px solid var(--accent); padding-bottom: 6px;">
+                        <span>Multiple Shapes</span>
+                        <span id="prop-multi-count" style="font-size:11px; background:var(--accent); color:#ffffff; padding:2px 8px; border-radius:12px; font-weight:600;">0 selected</span>
+                    </div>
+                    
+                    <!-- Alignments -->
+                    <div class="panel-section-title" style="margin-top:16px">Align & Arrange (X-Axis)</div>
+                    <div class="prop-group">
+                        <label class="prop-label">Set X Position for All (px)</label>
+                        <input id="prop-multi-x-pos" class="prop-input" type="number" placeholder="Coordinate (e.g. 100)">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                        <button id="btn-multi-align-left" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to the leftmost shape's X position">Align Left</button>
+                        <button id="btn-multi-align-center" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to their average center X">Align Center</button>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button id="btn-multi-dist-horiz" class="btn-secondary btn-sm btn-block" style="display:flex; align-items:center; justify-content:center;" title="Distribute selected shapes evenly horizontally">Distribute Horizontally</button>
+                    </div>
+                    
+                    <div class="panel-section-title" style="margin-top:20px">Align & Arrange (Y-Axis)</div>
+                    <div class="prop-group">
+                        <label class="prop-label">Set Y Position for All (px)</label>
+                        <input id="prop-multi-y-pos" class="prop-input" type="number" placeholder="Coordinate (e.g. 150)">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                        <button id="btn-multi-align-top" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to the topmost shape's Y position">Align Top</button>
+                        <button id="btn-multi-align-middle" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to their average middle Y">Align Middle</button>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button id="btn-multi-dist-vert" class="btn-secondary btn-sm btn-block" style="display:flex; align-items:center; justify-content:center;" title="Distribute selected shapes evenly vertically">Distribute Vertically</button>
+                    </div>
+
+                    <!-- Bulk Styles -->
+                    <div class="panel-section-title" style="margin-top:20px">Bulk Styles & Colors</div>
+                    <div class="prop-row">
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Fill Color</label>
+                            <div style="display:flex; align-items:center; gap:4px">
+                                <input id="prop-multi-bg-color" class="prop-color" type="color" value="#ffffff" disabled style="flex:1; min-width:0; width:auto; height:30px;">
+                                <input id="prop-multi-bg-trans" type="checkbox" title="Transparent Background" checked style="flex-shrink:0;">
+                                <span style="font-size:9px; color:var(--text-secondary); flex-shrink:0;">Trans?</span>
+                            </div>
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Font Color</label>
+                            <input id="prop-multi-font-color" class="prop-color" type="color" value="#000000">
+                        </div>
+                        <div class="prop-group prop-third">
+                            <label class="prop-label">Border Color</label>
+                            <input id="prop-multi-border-color" class="prop-color" type="color" value="#000000">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ===== BOTTOM GRID PANEL ===== -->
+    <div id="grid-panel" class="grid-panel">
+        <div class="grid-panel-header">
+            <span class="grid-panel-title">Process Data Table</span>
+            <div class="grid-panel-actions">
+                <button id="btn-excel-import" class="btn-secondary btn-sm btn-excel-import" title="Paste steps directly from Excel">📋 Paste from Excel</button>
+                <button id="btn-add-row" class="btn-secondary btn-sm">+ Add Step</button>
+                <button id="btn-delete-row" class="btn-secondary btn-sm btn-danger">Delete Selected</button>
+                <button id="btn-toggle-grid" class="panel-collapse-btn" title="Toggle Table">▼</button>
+            </div>
+        </div>
+        <div id="grid-container" class="grid-container"></div>
+    </div>
+
+    <!-- ===== VALIDATION TOAST ===== -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ===== MODAL ===== -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div id="modal" class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title"></h3>
+                <button id="modal-close" class="modal-close-btn">&times;</button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+            <div id="modal-footer" class="modal-footer"></div>
+        </div>
+    </div>
+
+    <!-- ===== CONTEXT MENU ===== -->
+    <div id="context-menu" class="context-menu hidden"></div>
+
+    <!-- ===== APP SCRIPTS ===== -->
+    <script src="js/core/EventBus.js"></script>
+    <script src="js/core/StateManager.js"></script>
+    <script src="js/core/StorageManager.js"></script>
+    <script src="js/data/DataModel.js"></script>
+    <script src="js/data/Templates.js"></script>
+    <script src="js/data/GridManager.js"></script>
+    <script src="js/diagram/ShapeFactory.js"></script>
+    <script src="js/diagram/ConnectorEngine.js"></script>
+    <script src="js/diagram/SwimlaneManager.js"></script>
+    <script src="js/diagram/LayoutEngine.js"></script>
+    <script src="js/diagram/DiagramRenderer.js"></script>
+    <script src="js/diagram/Minimap.js"></script>
+    <script src="js/export/Exporters.js"></script>
+    <script src="js/ui/Toolbar.js"></script>
+    <script src="js/ui/ExcelImporter.js"></script>
+    <script src="js/ui/ShapeToolbox.js"></script>
+    <script src="js/ui/PropertiesPanel.js"></script>
+    <script src="js/ui/ThemeManager.js"></script>
+    <script src="js/ui/KeyboardShortcuts.js"></script>
+    <script src="js/editor/SelectionManager.js"></script>
+    <script src="js/editor/EdgeEditor.js"></script>
+    <script src="js/editor/DragDropManager.js"></script>
+    <script src="js/editor/TextEditor.js"></script>
+    <script src="js/editor/ContextMenu.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

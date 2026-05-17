@@ -1,0 +1,643 @@
+/**
+ * ExcelImporter — Import and copy-paste process steps from Excel sheets
+ */
+(function () {
+    'use strict';
+    const bus = () => window.PMB.EventBus;
+    const state = () => window.PMB.StateManager;
+    const model = () => window.PMB.DataModel;
+
+    const FIELD_OPTIONS = [
+        { value: '', text: '[Ignore Column]' },
+        { value: 'stepId', text: 'Step ID' },
+        { value: 'stepName', text: 'Step Name' },
+        { value: 'description', text: 'Description' },
+        { value: 'shapeType', text: 'Shape Type' },
+        { value: 'swimlane', text: 'Swimlane' },
+        { value: 'nextStep', text: 'Next Step' },
+        { value: 'yesPath', text: 'Yes Path (Decisions)' },
+        { value: 'noPath', text: 'No Path (Decisions)' },
+        { value: 'backgroundColor', text: 'BG Color' },
+        { value: 'fontColor', text: 'Font Color' },
+        { value: 'borderColor', text: 'Border Color' },
+        { value: 'connectionLineColor', text: 'Line Color' },
+        { value: 'connectionLabel', text: 'Conn. Label' },
+        { value: 'width', text: 'Width' },
+        { value: 'height', text: 'Height' },
+        { value: 'icon', text: 'Icon' },
+        { value: 'notes', text: 'Notes' }
+    ];
+
+    const SHAPE_MAP = {
+        'start': 'start',
+        'end': 'end',
+        'process': 'process',
+        'step': 'process',
+        'activity': 'process',
+        'decision': 'decision',
+        'if': 'decision',
+        'document': 'document',
+        'doc': 'document',
+        'database': 'database',
+        'db': 'database',
+        'manualinput': 'manualInput',
+        'manual input': 'manualInput',
+        'input': 'manualInput',
+        'delay': 'delay',
+        'wait': 'delay',
+        'connector': 'connector',
+        'subprocess': 'subprocess',
+        'sub process': 'subprocess'
+    };
+
+    class ExcelImporter {
+        constructor() {
+            this._parsedData = null;
+        }
+
+        init() {
+            // Can listen to key events or actions if registered globally
+        }
+
+        showModal(preloadedText = '') {
+            const overlay = document.getElementById('modal-overlay');
+            const titleEl = document.getElementById('modal-title');
+            const bodyEl = document.getElementById('modal-body');
+            const footerEl = document.getElementById('modal-footer');
+            const modal = document.getElementById('modal');
+
+            if (!overlay || !titleEl || !bodyEl || !footerEl) return;
+
+            // Reset modal overlay hidden and configure class
+            modal.classList.add('excel-modal');
+            overlay.classList.remove('hidden');
+
+            titleEl.textContent = 'Paste & Import Steps from Excel';
+            
+            // Phase 1: Paste area layout
+            this._renderPastePhase(bodyEl, footerEl, preloadedText);
+            
+            // If text was preloaded (e.g. from global Ctrl+V), trigger paste handling immediately
+            if (preloadedText) {
+                const textarea = document.getElementById('excel-paste-textarea');
+                if (textarea) {
+                    textarea.value = preloadedText;
+                    this._handlePastedText(preloadedText, bodyEl, footerEl);
+                }
+            }
+        }
+
+        _renderPastePhase(bodyEl, footerEl, preloadedText) {
+            bodyEl.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="excel-paste-box" id="excel-paste-box">
+                        <svg class="excel-paste-icon" fill="currentColor" viewBox="0 0 24 24" width="48" height="48">
+                            <path d="M16.2 2H7.8C6.8 2 6 2.8 6 3.8v16.4c0 1 .8 1.8 1.8 1.8h8.4c1 0 1.8-.8 1.8-1.8V3.8c0-1-.8-1.8-1.8-1.8zm-1.7 13.5l-1.3-2 1.3-2c.1-.2.2-.4.2-.6 0-.4-.3-.7-.7-.7h-1.2c-.2 0-.4.1-.5.3l-.9 1.4-.9-1.4c-.1-.2-.3-.3-.5-.3H9c-.4 0-.7.3-.7.7 0 .2.1.4.2.6l1.3 2-1.3 2c-.1.2-.2.4-.2.6 0 .4.3.7.7.7h1.2c.2 0 .4-.1.5-.3l.9-1.4.9 1.4c.1.2.3.3.5.3h1.2c.4 0 .7-.3.7-.7 0-.2-.1-.4-.2-.6z" fill="#107c41"/>
+                        </svg>
+                        <div class="excel-paste-instructions">
+                            <p style="font-size:15px; font-weight:600; margin-bottom:4px; color:#107c41;">Copy Cells from Excel and Paste Here</p>
+                            <p style="font-size:12px; color:var(--text-secondary);">Select this area and press <strong>Ctrl+V</strong> to insert your columns.</p>
+                        </div>
+                        <textarea id="excel-paste-textarea" class="excel-paste-textarea" autofocus></textarea>
+                    </div>
+                    <div style="font-size:12px; line-height:1.5; color:var(--text-secondary); background:var(--bg-tertiary); padding:10px 12px; border-radius:var(--radius); border:1px solid var(--border)">
+                        <p style="font-weight:600; margin-bottom:4px; color:var(--text-primary);">💡 Column Headers Auto-matching:</p>
+                        <p>If your Excel sheet includes headers like <strong>Step ID</strong>, <strong>Step Name</strong>, <strong>Description</strong>, <strong>Shape</strong>, <strong>Swimlane</strong>, and <strong>Next Step</strong>, the system will automatically map the columns correctly!</p>
+                    </div>
+                </div>
+            `;
+
+            footerEl.innerHTML = `
+                <button id="excel-modal-cancel" class="btn-secondary">Cancel</button>
+            `;
+
+            const textarea = document.getElementById('excel-paste-textarea');
+            const pasteBox = document.getElementById('excel-paste-box');
+            
+            const closeModal = () => {
+                const modal = document.getElementById('modal');
+                if (modal) modal.classList.remove('excel-modal');
+                const overlayEl = document.getElementById('modal-overlay');
+                if (overlayEl) overlayEl.classList.add('hidden');
+            };
+
+            document.getElementById('excel-modal-cancel').addEventListener('click', closeModal);
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+            
+            // Re-focus textarea when clicking on the visual box
+            if (pasteBox && textarea) {
+                pasteBox.addEventListener('click', () => textarea.focus());
+            }
+
+            if (textarea) {
+                textarea.addEventListener('input', (e) => {
+                    this._handlePastedText(e.target.value, bodyEl, footerEl);
+                });
+            }
+        }
+
+        _handlePastedText(text, bodyEl, footerEl) {
+            const parsed = this._parseTSV(text);
+            if (!parsed || parsed.rows.length === 0) {
+                bus().emit('toast', 'warning', 'No valid data found in paste buffer. Please copy cells from Excel.');
+                return;
+            }
+
+            this._parsedData = parsed;
+            this._renderMappingPhase(bodyEl, footerEl);
+        }
+
+        _parseTSV(text) {
+            if (!text || !text.trim()) return null;
+            
+            const rows = [];
+            let currentRow = [];
+            let currentCell = '';
+            let inQuotes = false;
+            let maxCols = 0;
+            const len = text.length;
+            
+            for (let i = 0; i < len; i++) {
+                const char = text[i];
+                
+                if (inQuotes) {
+                    if (char === '"') {
+                        // Check for escaped double quotes ("")
+                        if (i + 1 < len && text[i + 1] === '"') {
+                            currentCell += '"';
+                            i++; // skip next quote
+                        } else {
+                            inQuotes = false;
+                        }
+                    } else {
+                        currentCell += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === '\t') {
+                        currentRow.push(currentCell.trim());
+                        currentCell = '';
+                    } else if (char === '\r') {
+                        if (i + 1 < len && text[i + 1] === '\n') {
+                            i++;
+                        }
+                        currentRow.push(currentCell.trim());
+                        rows.push(currentRow);
+                        if (currentRow.length > maxCols) maxCols = currentRow.length;
+                        currentRow = [];
+                        currentCell = '';
+                    } else if (char === '\n') {
+                        currentRow.push(currentCell.trim());
+                        rows.push(currentRow);
+                        if (currentRow.length > maxCols) maxCols = currentRow.length;
+                        currentRow = [];
+                        currentCell = '';
+                    } else {
+                        currentCell += char;
+                    }
+                }
+            }
+            
+            if (currentCell || currentRow.length > 0) {
+                currentRow.push(currentCell.trim());
+                rows.push(currentRow);
+                if (currentRow.length > maxCols) maxCols = currentRow.length;
+            }
+            
+            const nonEmptyRows = rows.filter(r => r.some(c => c !== ''));
+            if (nonEmptyRows.length === 0) return null;
+            return { rows: nonEmptyRows, colCount: maxCols };
+        }
+
+        _detectHeaders(firstRow) {
+            const mappings = {
+                stepId: ['step id', 'stepid', 'id', 'step_id', 'code', 'stepno', 'step no'],
+                stepName: ['step name', 'stepname', 'name', 'label', 'title', 'step_name', 'process step'],
+                description: ['description', 'desc', 'description text', 'details', 'summary'],
+                shapeType: ['shape', 'shape type', 'shapetype', 'type', 'shape_type'],
+                swimlane: ['swimlane', 'lane', 'swim lane', 'actor', 'department', 'role', 'owner'],
+                nextStep: ['next step', 'nextstep', 'next', 'next_step', 'following', 'goto', 'go to'],
+                yesPath: ['yes path', 'yespath', 'yes', 'yes_path', 'yes step', 'if yes', 'yes route'],
+                noPath: ['no path', 'nopath', 'no', 'no_path', 'no step', 'if no', 'no route'],
+                backgroundColor: ['bg color', 'bgcolor', 'background', 'fill color', 'fill', 'color'],
+                fontColor: ['font color', 'fontcolor', 'text color', 'text_color'],
+                borderColor: ['border color', 'bordercolor', 'border'],
+                connectionLineColor: ['line color', 'linecolor', 'connector color', 'connector_color'],
+                connectionLabel: ['conn label', 'connection label', 'conn_label', 'link label', 'line label'],
+                width: ['width', 'w'],
+                height: ['height', 'h'],
+                icon: ['icon'],
+                notes: ['notes', 'comments', 'comment']
+            };
+
+            let matchedCount = 0;
+            const columnMapping = [];
+
+            for (let c = 0; c < firstRow.length; c++) {
+                const cell = (firstRow[c] || '').toLowerCase().trim();
+                let matchedField = '';
+
+                for (const [field, keywords] of Object.entries(mappings)) {
+                    if (keywords.includes(cell)) {
+                        matchedField = field;
+                        matchedCount++;
+                        break;
+                    }
+                }
+                columnMapping.push(matchedField);
+            }
+
+            // Consider it a header row if we match at least one standard keyword
+            const hasHeaders = matchedCount >= 1;
+            return { hasHeaders, columnMapping };
+        }
+
+        _renderMappingPhase(bodyEl, footerEl) {
+            const parsed = this._parsedData;
+            const firstRow = parsed.rows[0] || [];
+            const headerResult = this._detectHeaders(firstRow);
+            
+            const hasHeaders = headerResult.hasHeaders;
+            const autoMapping = headerResult.columnMapping;
+            const dataRows = hasHeaders ? parsed.rows.slice(1) : parsed.rows;
+
+            let html = `
+                <div class="excel-mapping-container">
+                    <!-- Wizard Header/Intro -->
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:var(--text-secondary);">Detected <strong>${parsed.colCount} columns</strong> and <strong>${dataRows.length} rows</strong> of step data.</span>
+                        <span style="font-size:11px; padding:2px 6px; border-radius:4px; font-weight:600; ${hasHeaders ? 'background:rgba(22,163,74,0.1); color:var(--success)' : 'background:rgba(217,119,6,0.1); color:var(--warning)'}">
+                            ${hasHeaders ? '✓ Column headers detected' : '⚠ No column headers found'}
+                        </span>
+                    </div>
+
+                    <!-- Config Settings Row -->
+                    <div class="excel-import-settings">
+                        <div class="excel-setting-group" style="flex:1; min-width:200px;">
+                            <label>Import Strategy</label>
+                            <div class="excel-radio-group">
+                                <label class="excel-radio-label">
+                                    <input type="radio" name="excel-import-mode" value="append" checked />
+                                    <span>📋 Append to existing</span>
+                                </label>
+                                <label class="excel-radio-label">
+                                    <input type="radio" name="excel-import-mode" value="replace" />
+                                    <span>🔄 Replace all steps</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="excel-setting-group" style="display:flex; flex-direction:row; align-items:center; gap:16px;">
+                            <label class="excel-checkbox-label">
+                                <input type="checkbox" id="excel-auto-lanes" checked />
+                                <span>Create missing swimlanes</span>
+                            </label>
+                            <label class="excel-checkbox-label">
+                                <input type="checkbox" id="excel-auto-layout" checked />
+                                <span>Auto-layout diagram</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Mapping Table -->
+                    <div class="excel-mapping-table-wrapper">
+                        <table class="excel-mapping-table">
+                            <thead>
+                                <tr>
+                                    <th>Excel Column</th>
+                                    <th>Maps To Property</th>
+                                    <th>Preview Values (First 3 Rows)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            for (let c = 0; c < parsed.colCount; c++) {
+                const headerLabel = hasHeaders ? (firstRow[c] || `Column ${c + 1}`) : `Column ${c + 1}`;
+                
+                // Set initial mapping field
+                let selectedField = '';
+                if (hasHeaders) {
+                    selectedField = autoMapping[c] || '';
+                } else {
+                    const defaultOrder = ['stepId', 'stepName', 'description', 'shapeType', 'swimlane', 'nextStep', 'yesPath', 'noPath'];
+                    selectedField = defaultOrder[c] || '';
+                }
+
+                // Gather preview values
+                const previews = [];
+                for (let r = 0; r < Math.min(3, dataRows.length); r++) {
+                    const val = dataRows[r][c];
+                    if (val !== undefined && val !== '') {
+                        previews.push(val);
+                    }
+                }
+                const previewStr = previews.join(', ') || '(Empty)';
+
+                // Render field dropdown
+                let selectHtml = `<select class="excel-map-select" data-col-idx="${c}">`;
+                FIELD_OPTIONS.forEach(opt => {
+                    const isSel = opt.value === selectedField ? 'selected' : '';
+                    selectHtml += `<option value="${opt.value}" ${isSel}>${opt.text}</option>`;
+                });
+                selectHtml += `</select>`;
+
+                html += `
+                    <tr>
+                        <td style="width:220px;">
+                            <span class="excel-col-badge">${hasHeaders ? 'Header' : 'Col ' + (c + 1)}</span>
+                            <span style="font-weight:600; margin-left:6px; color:var(--text-primary);">${headerLabel}</span>
+                        </td>
+                        <td style="width:240px;">${selectHtml}</td>
+                        <td><div class="excel-preview-text" title="${previewStr}">${previewStr}</div></td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            bodyEl.innerHTML = html;
+
+            footerEl.innerHTML = `
+                <button id="excel-modal-back" class="btn-secondary" style="margin-right:auto;">← Paste Again</button>
+                <button id="excel-modal-cancel" class="btn-secondary">Cancel</button>
+                <button id="excel-modal-import" class="btn-primary excel-btn-green">Import Steps (${dataRows.length})</button>
+            `;
+
+            // Back button returns to text box
+            document.getElementById('excel-modal-back').addEventListener('click', () => {
+                this._renderPastePhase(bodyEl, footerEl);
+            });
+
+            const closeModal = () => {
+                const modal = document.getElementById('modal');
+                if (modal) modal.classList.remove('excel-modal');
+                const overlayEl = document.getElementById('modal-overlay');
+                if (overlayEl) overlayEl.classList.add('hidden');
+            };
+
+            document.getElementById('excel-modal-cancel').addEventListener('click', closeModal);
+            
+            // Execute Import
+            document.getElementById('excel-modal-import').addEventListener('click', () => {
+                this._executeImport(dataRows, parsed.colCount, closeModal);
+            });
+        }
+
+        _executeImport(dataRows, colCount, closeModalCallback) {
+            // 1. Gather column mappings
+            const selectEls = document.querySelectorAll('.excel-map-select');
+            const columnMappings = Array.from(selectEls).reduce((acc, select) => {
+                const colIdx = parseInt(select.getAttribute('data-col-idx'), 10);
+                acc[colIdx] = select.value;
+                return acc;
+            }, {});
+
+            // Verify if at least Step Name or Step ID is mapped
+            const mappedFields = Object.values(columnMappings);
+            if (!mappedFields.includes('stepName') && !mappedFields.includes('stepId')) {
+                bus().emit('toast', 'error', 'Mapping Error: You must map at least "Step Name" or "Step ID" to import!');
+                return;
+            }
+
+            // 2. Gather settings
+            const isReplaceMode = document.querySelector('input[name="excel-import-mode"]:checked').value === 'replace';
+            const autoCreateLanes = document.getElementById('excel-auto-lanes').checked;
+            const applyAutoLayout = document.getElementById('excel-auto-layout').checked;
+
+            // 3. Import process
+            const currentState = JSON.parse(JSON.stringify(state().getState()));
+
+            if (isReplaceMode) {
+                currentState.nodes = [];
+                currentState.edges = [];
+                // If we completely reset nodes, we also sync the ID counter
+                model().syncIdCounter([]);
+            }
+
+            // Build map of existing swimlanes to avoid duplicates
+            const laneMap = {};
+            currentState.lanes.forEach(lane => {
+                laneMap[lane.name.toLowerCase()] = lane.id;
+                laneMap[lane.id.toLowerCase()] = lane.id;
+            });
+
+            // Map to track duplicate Step ID collisions in Append Mode
+            const idLookup = {}; // oldStepId -> newStepId
+            const existingNodes = isReplaceMode ? [] : state().getNodes();
+            const existingIds = new Set(existingNodes.map(n => n.stepId));
+
+            const newNodes = [];
+
+            // 2.5 Construct raw row objects from spreadsheet data
+            const rawRows = [];
+            dataRows.forEach(row => {
+                const rawNode = {};
+                let hasVal = false;
+                for (let c = 0; c < colCount; c++) {
+                    const field = columnMappings[c];
+                    if (field) {
+                        const val = (row[c] || '').trim();
+                        rawNode[field] = val;
+                        if (val !== '') hasVal = true;
+                    }
+                }
+                if (hasVal) {
+                    rawRows.push(rawNode);
+                }
+            });
+
+            // Pass A: Forward merge pass (e.g. Row 7 "Confirm solution" merges into S5 "Issue closed")
+            for (let i = 0; i < rawRows.length - 1; i++) {
+                const cur = rawRows[i];
+                const next = rawRows[i + 1];
+                
+                const curHasId = !!cur.stepId;
+                const nextHasId = !!next.stepId;
+                
+                const curHasMetadata = Object.entries(cur).some(([k, v]) => {
+                    return k !== 'stepId' && k !== 'stepName' && k !== 'description' && v !== '';
+                });
+                
+                if (!curHasId && !curHasMetadata && nextHasId) {
+                    next.stepName = (cur.stepName ? cur.stepName + '\n' : '') + (next.stepName || '');
+                    next.description = (cur.description ? cur.description + '\n' : '') + (next.description || '');
+                    cur._merged = true;
+                }
+            }
+            const filteredRows = rawRows.filter(r => !r._merged);
+
+            // Pass B: Backward/consecutive merge pass (e.g. S1 "Report issue" merges Row 3 "Receive issue")
+            const groupedRows = [];
+            let currentGroup = null;
+
+            for (let i = 0; i < filteredRows.length; i++) {
+                const row = filteredRows[i];
+                
+                const hasId = !!row.stepId;
+                const hasMetadata = Object.entries(row).some(([k, v]) => {
+                    return k !== 'stepId' && k !== 'stepName' && k !== 'description' && v !== '';
+                });
+
+                if (hasId) {
+                    if (currentGroup) {
+                        groupedRows.push(currentGroup);
+                    }
+                    currentGroup = JSON.parse(JSON.stringify(row));
+                } else {
+                    if (currentGroup && !hasMetadata) {
+                        // Merge into active group
+                        if (row.stepName) {
+                            currentGroup.stepName = (currentGroup.stepName || '') + '\n' + row.stepName;
+                        }
+                        if (row.description) {
+                            currentGroup.description = (currentGroup.description || '') + '\n' + row.description;
+                        }
+                    } else {
+                        // Start a new group or merge into next (if no ID exists)
+                        if (currentGroup) {
+                            groupedRows.push(currentGroup);
+                        }
+                        currentGroup = JSON.parse(JSON.stringify(row));
+                    }
+                }
+            }
+
+            if (currentGroup) {
+                groupedRows.push(currentGroup);
+            }
+
+            // Auto-generate step IDs for groups lacking them
+            groupedRows.forEach(g => {
+                if (!g.stepId) {
+                    g.stepId = model().generateId('S');
+                }
+            });
+
+            // Pass 1: Normalize fields, resolve swimlanes, generate and remap IDs
+            groupedRows.forEach(rawNode => {
+
+                // Normalize shape type
+                let shapeType = 'process';
+                if (rawNode.shapeType) {
+                    const shapeLower = rawNode.shapeType.toLowerCase().replace(/\s+/g, '');
+                    shapeType = SHAPE_MAP[shapeLower] || 'process';
+                }
+
+                // Resolve swimlane ID
+                let swimlaneId = '';
+                if (rawNode.swimlane) {
+                    const laneStr = rawNode.swimlane.trim();
+                    const laneLower = laneStr.toLowerCase();
+                    
+                    if (laneMap[laneLower]) {
+                        swimlaneId = laneMap[laneLower];
+                    } else if (autoCreateLanes) {
+                        // Create a new swimlane!
+                        const newLane = model().createLane({ name: laneStr, order: currentState.lanes.length });
+                        currentState.lanes.push(newLane);
+                        
+                        // Register in lane maps
+                        laneMap[laneLower] = newLane.id;
+                        laneMap[newLane.id.toLowerCase()] = newLane.id;
+                        swimlaneId = newLane.id;
+                    }
+                }
+
+                // Resolve duplicate Step IDs
+                let originalId = (rawNode.stepId || '').trim();
+                let finalId = originalId;
+
+                if (!finalId) {
+                    finalId = model().generateId('S');
+                } else if (existingIds.has(finalId)) {
+                    // Collision found: generate a new unique ID
+                    finalId = model().generateId('S');
+                    idLookup[originalId] = finalId;
+                }
+                
+                existingIds.add(finalId);
+
+                // Build clean node
+                const nodeObj = model().createNode({
+                    stepId: finalId,
+                    stepName: rawNode.stepName || 'Imported Step',
+                    description: rawNode.description || '',
+                    shapeType: shapeType,
+                    swimlane: swimlaneId,
+                    nextStep: rawNode.nextStep || '',
+                    yesPath: rawNode.yesPath || '',
+                    noPath: rawNode.noPath || '',
+                    backgroundColor: rawNode.backgroundColor || undefined,
+                    fontColor: rawNode.fontColor || undefined,
+                    borderColor: rawNode.borderColor || undefined,
+                    connectionLineColor: rawNode.connectionLineColor || undefined,
+                    connectionLabel: rawNode.connectionLabel || '',
+                    width: parseInt(rawNode.width, 10) || undefined,
+                    height: parseInt(rawNode.height, 10) || undefined,
+                    icon: rawNode.icon || '',
+                    notes: rawNode.notes || ''
+                });
+
+                // Temporarily track old targets for Pass 2 connection fixing
+                nodeObj._origNext = rawNode.nextStep || '';
+                nodeObj._origYes = rawNode.yesPath || '';
+                nodeObj._origNo = rawNode.noPath || '';
+
+                newNodes.push(nodeObj);
+            });
+
+            if (newNodes.length === 0) {
+                bus().emit('toast', 'warning', 'No valid process steps were found to import.');
+                return;
+            }
+
+            // Pass 2: Re-link connections using the lookup table if IDs were remapped
+            newNodes.forEach(node => {
+                if (node._origNext && idLookup[node._origNext]) {
+                    node.nextStep = idLookup[node._origNext];
+                }
+                if (node._origYes && idLookup[node._origYes]) {
+                    node.yesPath = idLookup[node._origYes];
+                }
+                if (node._origNo && idLookup[node._origNo]) {
+                    node.noPath = idLookup[node._origNo];
+                }
+
+                // Delete transient fields
+                delete node._origNext;
+                delete node._origYes;
+                delete node._origNo;
+            });
+
+            // Append nodes and build new logical edges
+            currentState.nodes = currentState.nodes.concat(newNodes);
+            currentState.edges = model().buildEdges(currentState.nodes);
+
+            // Save updated state into state history
+            state().setState(currentState);
+
+            // Trigger success indicator
+            bus().emit('toast', 'success', `Successfully imported ${newNodes.length} steps from Excel!`);
+
+            // Apply layout engine rendering
+            if (applyAutoLayout && window.PMB.DiagramRenderer) {
+                setTimeout(() => {
+                    window.PMB.DiagramRenderer.autoLayout();
+                }, 100);
+            }
+
+            // Close the modal
+            closeModalCallback();
+        }
+    }
+
+    window.PMB = window.PMB || {};
+    window.PMB.ExcelImporter = new ExcelImporter();
+    window.PMB.ExcelImporter.init();
+})();
