@@ -194,6 +194,7 @@
             const spacingInput = document.getElementById('layout-spacing');
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
+            const laneOrientationInput = document.getElementById('lane-orientation');
 
             if (spacingInput && settings.nodeSpacing !== undefined) {
                 spacingInput.value = settings.nodeSpacing;

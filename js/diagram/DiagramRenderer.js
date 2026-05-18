@@ -162,9 +162,9 @@
         async autoLayout(skipFit = false) {
             const s = state().getState();
             const nodes = s.nodes || [];
-            const lanes = s.lanes || [];
-            const edges = model().buildEdges(nodes);
             const settings = s.settings || {};
+            const lanes = settings.laneOrientation === 'vertical' ? (s.laneColumns || []) : (s.lanes || []);
+            const edges = model().buildEdges(nodes);
 
             bus().emit('toast', 'info', 'Running auto-layout...');
 

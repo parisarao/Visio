@@ -81,44 +81,102 @@
                 const laneHeight = 180;
                 const laneWidth = 240;
 
+                // Calculate dynamic Y offset in vertical mode to prevent overlapping titles/headers
+                let minYShift = 60;
+                if (!isHoriz) {
+                    const startY = titleText ? 70 : 10;
+                    const headerH = 40;
+                    let minElkY = Infinity;
+                    nodes.forEach(ln => {
+                        const lpos = posMap[ln.stepId];
+                        if (lpos && lpos.y < minElkY) minElkY = lpos.y;
+                    });
+                    if (minElkY !== Infinity) {
+                        minYShift = startY + headerH + 30 - minElkY;
+                    }
+                }
+
                 // Apply positions to nodes with swimlane centering post-processing
                 const updated = nodes.map(n => {
                     const pos = posMap[n.stepId];
                     if (pos) {
                         let nx = pos.x + headerOffset;
-                        let ny = pos.y + headerOffset;
+                        let ny = pos.y + (isHoriz ? headerOffset : minYShift);
 
-                        if (lanes && lanes.length > 0 && n.swimlane) {
-                            const laneIdx = laneMap[n.swimlane];
-                            if (laneIdx !== undefined) {
-                                if (isHoriz) {
-                                    // Stack horizontal lanes vertically
-                                    const laneY = startY + laneIdx * laneHeight;
-                                    
-                                    // Find all nodes in this lane to compute min Y from ELK
-                                    const laneNodes = nodes.filter(x => x.swimlane === n.swimlane);
-                                    let minElkY = pos.y;
-                                    laneNodes.forEach(ln => {
-                                        const lpos = posMap[ln.stepId];
-                                        if (lpos && lpos.y < minElkY) minElkY = lpos.y;
-                                    });
-                                    
-                                    const relY = pos.y - minElkY;
-                                    ny = laneY + 40 + relY; // 40px top padding
-                                } else {
-                                    // Stack vertical lanes horizontally
-                                    const laneX = 20 + laneIdx * laneWidth;
-                                    
-                                    // Find all nodes in this lane to compute min X from ELK
-                                    const laneNodes = nodes.filter(x => x.swimlane === n.swimlane);
+                        if (orientation === 'grid') {
+                            const rows = lanes;
+                            let columns = state().getLaneColumns ? state().getLaneColumns() : [];
+                            columns = [...columns].sort((a, b) => (a.order || 0) - (b.order || 0));
+                            if (columns.length === 0) {
+                                columns = [{ id: 'default-col', name: 'Column 1', order: 0 }];
+                            }
+                            
+                            // Horizontal positioning (Column)
+                            const colId = n.swimlaneColumn || (columns[0] && columns[0].id);
+                            if (columns.length > 0 && colId) {
+                                const colIdx = columns.findIndex(c => c.id === colId);
+                                if (colIdx !== -1) {
+                                    const laneX = 40 + colIdx * laneWidth;
+                                    const colNodes = nodes.filter(x => (x.swimlaneColumn || (columns[0] && columns[0].id)) === colId);
                                     let minElkX = pos.x;
-                                    laneNodes.forEach(ln => {
+                                    colNodes.forEach(ln => {
                                         const lpos = posMap[ln.stepId];
                                         if (lpos && lpos.x < minElkX) minElkX = lpos.x;
                                     });
-                                    
                                     const relX = pos.x - minElkX;
-                                    nx = laneX + 40 + relX; // 40px left padding
+                                    nx = laneX + 30 + relX;
+                                }
+                            }
+
+                            // Vertical positioning (Row)
+                            if (rows.length > 0 && n.swimlane) {
+                                const rowIdx = rows.findIndex(r => r.id === n.swimlane);
+                                if (rowIdx !== -1) {
+                                    const laneY = startY + rowIdx * laneHeight + 40;
+                                    const rowNodes = nodes.filter(x => x.swimlane === n.swimlane);
+                                    let minElkY = pos.y;
+                                    rowNodes.forEach(ln => {
+                                        const lpos = posMap[ln.stepId];
+                                        if (lpos && lpos.y < minElkY) minElkY = lpos.y;
+                                    });
+                                    const relY = pos.y - minElkY;
+                                    ny = laneY + 30 + relY;
+                                }
+                            }
+                        } else {
+                            const laneId = isHoriz ? n.swimlane : n.swimlaneColumn;
+                            if (lanes && lanes.length > 0 && laneId) {
+                                const laneIdx = laneMap[laneId];
+                                if (laneIdx !== undefined) {
+                                    if (isHoriz) {
+                                        // Stack horizontal lanes vertically
+                                        const laneY = startY + laneIdx * laneHeight;
+                                        
+                                        // Find all nodes in this lane to compute min Y from ELK
+                                        const laneNodes = nodes.filter(x => x.swimlane === n.swimlane);
+                                        let minElkY = pos.y;
+                                        laneNodes.forEach(ln => {
+                                            const lpos = posMap[ln.stepId];
+                                            if (lpos && lpos.y < minElkY) minElkY = lpos.y;
+                                        });
+                                        
+                                        const relY = pos.y - minElkY;
+                                        ny = laneY + 40 + relY; // 40px top padding
+                                    } else {
+                                        // Stack vertical lanes horizontally
+                                        const laneX = 20 + laneIdx * laneWidth;
+                                        
+                                        // Find all nodes in this lane to compute min X from ELK
+                                        const laneNodes = nodes.filter(x => x.swimlaneColumn === n.swimlaneColumn);
+                                        let minElkX = pos.x;
+                                        laneNodes.forEach(ln => {
+                                            const lpos = posMap[ln.stepId];
+                                            if (lpos && lpos.x < minElkX) minElkX = lpos.x;
+                                        });
+                                        
+                                        const relX = pos.x - minElkX;
+                                        nx = laneX + 40 + relX; // 40px left padding
+                                    }
                                 }
                             }
                         }

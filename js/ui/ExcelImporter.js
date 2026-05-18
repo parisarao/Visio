@@ -14,6 +14,7 @@
         { value: 'description', text: 'Description' },
         { value: 'shapeType', text: 'Shape Type' },
         { value: 'swimlane', text: 'Swimlane' },
+        { value: 'swimlaneColumn', text: 'Column Swimlane' },
         { value: 'nextStep', text: 'Next Step' },
         { value: 'yesPath', text: 'Yes Path (Decisions)' },
         { value: 'noPath', text: 'No Path (Decisions)' },
@@ -217,6 +218,7 @@
                 description: ['description', 'desc', 'description text', 'details', 'summary'],
                 shapeType: ['shape', 'shape type', 'shapetype', 'type', 'shape_type'],
                 swimlane: ['swimlane', 'lane', 'swim lane', 'actor', 'department', 'role', 'owner'],
+                swimlaneColumn: ['swimlane column', 'swimlanecolumn', 'column swimlane', 'swimlane_column'],
                 nextStep: ['next step', 'nextstep', 'next', 'next_step', 'following', 'goto', 'go to'],
                 yesPath: ['yes path', 'yespath', 'yes', 'yes_path', 'yes step', 'if yes', 'yes route'],
                 noPath: ['no path', 'nopath', 'no', 'no_path', 'no step', 'if no', 'no route'],
@@ -427,6 +429,14 @@
                 laneMap[lane.id.toLowerCase()] = lane.id;
             });
 
+            // Build map of existing column swimlanes to avoid duplicates
+            const colMap = {};
+            currentState.laneColumns = currentState.laneColumns || [];
+            currentState.laneColumns.forEach(col => {
+                colMap[col.name.toLowerCase()] = col.id;
+                colMap[col.id.toLowerCase()] = col.id;
+            });
+
             // Map to track duplicate Step ID collisions in Append Mode
             const idLookup = {}; // oldStepId -> newStepId
             const existingNodes = isReplaceMode ? [] : state().getNodes();
@@ -549,6 +559,34 @@
                     }
                 }
 
+                // Resolve column swimlane ID
+                let swimlaneColId = '';
+                if (rawNode.swimlaneColumn) {
+                    const colStr = rawNode.swimlaneColumn.trim();
+                    const colLower = colStr.toLowerCase();
+                    
+                    if (colMap[colLower]) {
+                        swimlaneColId = colMap[colLower];
+                    } else if (autoCreateLanes) {
+                        // Create a new column swimlane!
+                        const newCol = {
+                            id: 'col-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                            name: colStr,
+                            headerBackgroundColor: 'transparent',
+                            backgroundColor: 'transparent',
+                            borderColor: '#000000',
+                            fontColor: '#000000',
+                            order: currentState.laneColumns.length
+                        };
+                        currentState.laneColumns.push(newCol);
+                        
+                        // Register in column maps
+                        colMap[colLower] = newCol.id;
+                        colMap[newCol.id.toLowerCase()] = newCol.id;
+                        swimlaneColId = newCol.id;
+                    }
+                }
+
                 // Resolve duplicate Step IDs
                 let originalId = (rawNode.stepId || '').trim();
                 let finalId = originalId;
@@ -570,6 +608,7 @@
                     description: rawNode.description || '',
                     shapeType: shapeType,
                     swimlane: swimlaneId,
+                    swimlaneColumn: swimlaneColId,
                     nextStep: rawNode.nextStep || '',
                     yesPath: rawNode.yesPath || '',
                     noPath: rawNode.noPath || '',

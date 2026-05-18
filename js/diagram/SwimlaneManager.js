@@ -27,19 +27,25 @@
          */
         render(lanes, nodes, orientation, svgLayer, columns = []) {
             while (svgLayer.firstChild) svgLayer.removeChild(svgLayer.firstChild);
-            if (!lanes || lanes.length === 0) return {};
 
-            const sorted = [...lanes].sort((a, b) => (a.order || 0) - (b.order || 0));
-            const sortedColumns = [...(columns || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-            const bounds = {};
+            let sortedColumns = [...(columns || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            if (orientation === 'grid' && sortedColumns.length === 0) {
+                sortedColumns = [{ id: 'default-col', name: 'Column 1', order: 0 }];
+            }
+
             const isHoriz = orientation !== 'vertical';
+            const renderLanes = isHoriz ? lanes : sortedColumns;
+            if (!renderLanes || renderLanes.length === 0) return {};
 
-            if (orientation === 'grid' && sortedColumns.length > 0) {
+            const sorted = [...(lanes || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const bounds = {};
+
+            if (orientation === 'grid') {
                 this._renderGrid(sorted, sortedColumns, nodes, svgLayer, bounds);
             } else if (isHoriz) {
                 this._renderHorizontal(sorted, nodes, svgLayer, bounds);
             } else {
-                this._renderVertical(sorted, nodes, svgLayer, bounds);
+                this._renderVertical(sortedColumns, nodes, svgLayer, bounds);
             }
             return bounds;
         },
@@ -96,7 +102,7 @@
             const gap = 2;
 
             const colWidths = columns.map(col => {
-                const colNodes = nodes.filter(n => n.swimlaneColumn === col.id);
+                const colNodes = nodes.filter(n => (n.swimlaneColumn || (columns[0] && columns[0].id)) === col.id);
                 if (colNodes.length === 0) return 240;
                 const minX = Math.min(...colNodes.map(n => n.x || 0));
                 const maxX = Math.max(...colNodes.map(n => (n.x || 0) + (n.width || 140)));
@@ -129,8 +135,9 @@
             });
 
             nodes.forEach(node => {
-                if (node.swimlaneColumn) {
-                    const colIdx = columns.findIndex(c => c.id === node.swimlaneColumn);
+                const colId = node.swimlaneColumn || (columns[0] && columns[0].id);
+                if (colId) {
+                    const colIdx = columns.findIndex(c => c.id === colId);
                     if (colIdx !== -1) {
                         const minX = colStarts[colIdx] + padding;
                         const maxX = colStarts[colIdx] + colWidths[colIdx] - padding - (node.width || 140);
@@ -346,7 +353,7 @@
             // Calculate total width of all vertical lanes combined
             let totalWidth = 0;
             lanes.forEach(lane => {
-                const laneNodes = nodes.filter(n => n.swimlane === lane.id);
+                const laneNodes = nodes.filter(n => n.swimlaneColumn === lane.id);
                 let laneWidth = 240;
                 if (laneNodes.length > 0) {
                     let minX = Infinity, maxX2 = 0;
@@ -392,10 +399,16 @@
                 startY = 10 + titleBarH + 10;
             }
 
-            const totalHeight = startY + 400; // base height plus title offset
+            // Calculate dynamic height based on the maximum y position of any node
+            let maxY = 0;
+            nodes.forEach(n => {
+                const bottom = (n.y || 0) + (n.height || 60);
+                if (bottom > maxY) maxY = bottom;
+            });
+            const totalHeight = Math.max(500, maxY + padding * 2);
 
             lanes.forEach(lane => {
-                const laneNodes = nodes.filter(n => n.swimlane === lane.id);
+                const laneNodes = nodes.filter(n => n.swimlaneColumn === lane.id);
                 
                 // Calculate dynamic width based on nodes in this lane
                 let laneWidth = 240;
