@@ -66,7 +66,7 @@
 
             // Label
             if (edge.label) {
-                const mid = this._midpoint(src, tgt);
+                const mid = this._labelPoint(points);
                 const labelG = el('g', { transform: `translate(${mid.x},${mid.y})` });
                 const bg = el('rect', {
                     x: -16, y: -10, width: 32, height: 18, rx: 4,
@@ -192,6 +192,41 @@
 
         _midpoint(src, tgt) {
             return { x: (src.x + tgt.x) / 2, y: (src.y + tgt.y) / 2 };
+        },
+
+        _labelPoint(points) {
+            if (!points || points.length < 2) return { x: 0, y: 0 };
+
+            const segments = [];
+            let totalLength = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                const start = points[i];
+                const end = points[i + 1];
+                const length = Math.hypot(end.x - start.x, end.y - start.y);
+                if (length <= 0) continue;
+                segments.push({ start, end, length });
+                totalLength += length;
+            }
+
+            if (segments.length === 0) return points[0];
+
+            let target = totalLength / 2;
+            for (const segment of segments) {
+                if (target <= segment.length) {
+                    const ratio = target / segment.length;
+                    return {
+                        x: segment.start.x + (segment.end.x - segment.start.x) * ratio,
+                        y: segment.start.y + (segment.end.y - segment.start.y) * ratio
+                    };
+                }
+                target -= segment.length;
+            }
+
+            const last = segments[segments.length - 1];
+            return {
+                x: (last.start.x + last.end.x) / 2,
+                y: (last.start.y + last.end.y) / 2
+            };
         }
     };
 
