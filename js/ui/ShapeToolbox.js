@@ -90,8 +90,15 @@
 
         _setupLaneControls() {
             document.getElementById('btn-add-lane').addEventListener('click', () => {
-                this.showLaneModal();
+                this.showLaneModal(null, 'row');
             });
+
+            const addColumnBtn = document.getElementById('btn-add-column-lane');
+            if (addColumnBtn) {
+                addColumnBtn.addEventListener('click', () => {
+                    this.showLaneModal(null, 'column');
+                });
+            }
 
             document.getElementById('lane-orientation').addEventListener('change', (e) => {
                 state().updateSettings({ laneOrientation: e.target.value });
@@ -103,6 +110,34 @@
             const container = document.getElementById('lane-list');
             container.innerHTML = '';
             const lanes = state().getLanes();
+            this._renderLaneItems(container, lanes, 'row');
+
+            const columnContainer = document.getElementById('lane-column-list');
+            if (columnContainer) {
+                columnContainer.innerHTML = '';
+                this._renderLaneItems(columnContainer, state().getLaneColumns ? state().getLaneColumns() : [], 'column');
+            }
+
+            // Update swimlane dropdown in properties
+            const propSelect = document.getElementById('prop-swimlane');
+            if (propSelect) {
+                propSelect.innerHTML = '<option value="">(None)</option>';
+                lanes.forEach(l => {
+                    propSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`;
+                });
+            }
+
+            const propColumnSelect = document.getElementById('prop-swimlane-column');
+            if (propColumnSelect) {
+                propColumnSelect.innerHTML = '<option value="">(None)</option>';
+                const columns = state().getLaneColumns ? state().getLaneColumns() : [];
+                columns.forEach(c => {
+                    propColumnSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+            }
+        },
+
+        _renderLaneItems(container, lanes, kind) {
             lanes.forEach(lane => {
                 const item = document.createElement('div');
                 item.className = 'lane-item';
@@ -115,28 +150,24 @@
                     </div>
                 `;
                 item.querySelector('[data-action="edit"]').addEventListener('click', () => {
-                    this.showLaneModal(lane);
+                    this.showLaneModal(lane, kind);
                 });
                 item.querySelector('[data-action="delete"]').addEventListener('click', () => {
-                    if (confirm(`Delete lane "${lane.name}"?`)) state().removeLane(lane.id);
+                    const label = kind === 'column' ? 'column swimlane' : 'row swimlane';
+                    if (confirm(`Delete ${label} "${lane.name}"?`)) {
+                        if (kind === 'column') state().removeLaneColumn(lane.id);
+                        else state().removeLane(lane.id);
+                    }
                 });
                 container.appendChild(item);
             });
-
-            // Update swimlane dropdown in properties
-            const propSelect = document.getElementById('prop-swimlane');
-            if (propSelect) {
-                propSelect.innerHTML = '<option value="">(None)</option>';
-                lanes.forEach(l => {
-                    propSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`;
-                });
-            }
         },
 
         _setupLayoutControls() {
             const spacingInput = document.getElementById('layout-spacing');
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
+            const laneOrientationInput = document.getElementById('lane-orientation');
 
             if (spacingInput && spacingVal) {
                 spacingInput.addEventListener('input', (e) => {
@@ -171,16 +202,20 @@
             if (directionInput && settings.flowDirection) {
                 directionInput.value = settings.flowDirection;
             }
+            if (laneOrientationInput && settings.laneOrientation) {
+                laneOrientationInput.value = settings.laneOrientation;
+            }
         },
 
-        showLaneModal(laneToEdit = null) {
+        showLaneModal(laneToEdit = null, kind = 'row') {
             const overlay = document.getElementById('modal-overlay');
             const titleEl = document.getElementById('modal-title');
             const bodyEl = document.getElementById('modal-body');
             const footerEl = document.getElementById('modal-footer');
             if (!overlay || !titleEl || !bodyEl || !footerEl) return;
 
-            titleEl.textContent = laneToEdit ? 'Edit Swimlane' : 'Add Swimlane';
+            const laneKindLabel = kind === 'column' ? 'Column Swimlane' : 'Row Swimlane';
+            titleEl.textContent = laneToEdit ? `Edit ${laneKindLabel}` : `Add ${laneKindLabel}`;
             
             // Set up form fields
             const nameVal = laneToEdit ? laneToEdit.name : 'New Lane';
@@ -198,7 +233,7 @@
             bodyEl.innerHTML = `
                 <form id="lane-modal-form" style="display:flex; flex-direction:column; gap:16px;">
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                        <label style="font-size:12px; font-weight:600; color:var(--text-primary)">Swimlane Name</label>
+                        <label style="font-size:12px; font-weight:600; color:var(--text-primary)">${laneKindLabel} Name</label>
                         <input type="text" id="lane-modal-name" class="prop-input" value="${nameVal}" style="width:100%; font-size:13px; padding:6px 10px;" required />
                     </div>
                     
@@ -303,10 +338,16 @@
                         backgroundColor: finalBBg,
                         borderColor: finalBorder,
                         fontColor: finalFont,
-                        order: state().getLanes().length
+                        order: kind === 'column'
+                            ? (state().getLaneColumns ? state().getLaneColumns().length : 0)
+                            : state().getLanes().length
                     });
-                    state().addLane(newLane);
-                    bus().emit('toast', 'success', 'Swimlane added');
+                    if (kind === 'column') {
+                        state().addLaneColumn(newLane);
+                    } else {
+                        state().addLane(newLane);
+                    }
+                    bus().emit('toast', 'success', `${laneKindLabel} added`);
                 }
                 closeModal();
             });

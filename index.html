@@ -150,12 +150,17 @@
                 <div class="panel-section">
                     <div class="panel-section-title">Swimlanes</div>
                     <div id="swimlane-controls" class="swimlane-controls">
-                        <button id="btn-add-lane" class="btn-secondary btn-block">+ Add Swimlane</button>
+                        <button id="btn-add-lane" class="btn-secondary btn-block">+ Add Row Swimlane</button>
+                        <button id="btn-add-column-lane" class="btn-secondary btn-block" style="margin-top:6px;">+ Add Column Swimlane</button>
                         <select id="lane-orientation" class="toolbar-select" style="width:100%;margin-top:8px">
                             <option value="horizontal">Horizontal Lanes</option>
                             <option value="vertical">Vertical Lanes</option>
+                            <option value="grid">Rows + Columns</option>
                         </select>
+                        <div class="panel-section-title" style="margin-top:10px">Rows</div>
                         <div id="lane-list" class="lane-list"></div>
+                        <div class="panel-section-title" style="margin-top:10px">Columns</div>
+                        <div id="lane-column-list" class="lane-list"></div>
                     </div>
                 </div>
             </div>
@@ -314,8 +319,12 @@
                         </select>
                     </div>
                     <div class="prop-group">
-                        <label class="prop-label">Swimlane</label>
+                        <label class="prop-label">Row Swimlane</label>
                         <select id="prop-swimlane" class="prop-select"></select>
+                    </div>
+                    <div class="prop-group">
+                        <label class="prop-label">Column Swimlane</label>
+                        <select id="prop-swimlane-column" class="prop-select"></select>
                     </div>
                     <div class="prop-group" id="prop-layout-flow-group">
                         <label class="prop-label">Step Flow Direction</label>

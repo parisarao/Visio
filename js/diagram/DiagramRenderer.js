@@ -92,6 +92,7 @@
             const s = state().getState();
             const nodes = s.nodes || [];
             const lanes = s.lanes || [];
+            const laneColumns = s.laneColumns || [];
             const settings = s.settings || {};
             const edges = model().buildEdges(nodes);
 
@@ -105,7 +106,7 @@
             this._clearLayer(this._connectorLayer);
 
             // Render swimlanes (even if 0 nodes!)
-            swimlanes().render(lanes, nodes, settings.laneOrientation || 'horizontal', this._swimlaneLayer);
+            swimlanes().render(lanes, nodes, settings.laneOrientation || 'horizontal', this._swimlaneLayer, laneColumns);
 
             if (nodes.length === 0) {
                 // Update minimap

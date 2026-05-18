@@ -38,6 +38,7 @@
                 { el: 'prop-description', field: 'description' },
                 { el: 'prop-shape-type', field: 'shapeType' },
                 { el: 'prop-swimlane', field: 'swimlane' },
+                { el: 'prop-swimlane-column', field: 'swimlaneColumn' },
                 { el: 'prop-layout-flow', field: 'layoutFlow' },
                 { el: 'prop-yes-flow-dir', field: 'yesFlowDir' },
                 { el: 'prop-no-flow-dir', field: 'noFlowDir' },
@@ -489,6 +490,19 @@
                     swimlaneSelect.appendChild(opt);
                 });
                 swimlaneSelect.value = node.swimlane || '';
+            }
+
+            const swimlaneColumnSelect = document.getElementById('prop-swimlane-column');
+            if (swimlaneColumnSelect) {
+                swimlaneColumnSelect.innerHTML = '<option value="">[No Column]</option>';
+                const columns = state().getLaneColumns ? (state().getLaneColumns() || []) : [];
+                columns.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name;
+                    swimlaneColumnSelect.appendChild(opt);
+                });
+                swimlaneColumnSelect.value = node.swimlaneColumn || '';
             }
 
             document.getElementById('prop-layout-flow').value = node.layoutFlow || 'default';

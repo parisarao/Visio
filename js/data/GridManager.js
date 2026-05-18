@@ -61,6 +61,22 @@
                             return lane ? lane.name : v || '';
                         }
                     },
+                    { title: 'Column', field: 'swimlaneColumn', width: 120, editor: 'list',
+                        editorParams: () => {
+                            const columns = state().getLaneColumns ? state().getLaneColumns() : [];
+                            const values = { '': '(None)' };
+                            columns.forEach(c => {
+                                values[c.id] = c.name;
+                            });
+                            return { values };
+                        },
+                        formatter: (cell) => {
+                            const v = cell.getValue();
+                            const columns = state().getLaneColumns ? state().getLaneColumns() : [];
+                            const column = columns.find(c => c.id === v);
+                            return column ? column.name : v || '';
+                        }
+                    },
                     { title: 'Next Step', field: 'nextStep', width: 90, editor: 'input' },
                     { title: 'Yes Path', field: 'yesPath', width: 90, editor: 'input' },
                     { title: 'No Path', field: 'noPath', width: 90, editor: 'input' },
@@ -82,8 +98,8 @@
                 const row = cell.getRow().getData();
                 const field = cell.getField();
                 
-                if (field === 'swimlane') {
-                    state().updateNode(row.stepId, { swimlane: cell.getValue() });
+                if (field === 'swimlane' || field === 'swimlaneColumn') {
+                    state().updateNode(row.stepId, { [field]: cell.getValue() });
                 } else {
                     const nodes = this._table.getData();
                     const currentState = state().getState();

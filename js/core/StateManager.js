@@ -37,6 +37,7 @@
                 },
                 title: 'Enterprise Process Map',
                 lanes: [],
+                laneColumns: [],
                 nodes: [],
                 edges: []
             };
@@ -62,6 +63,7 @@
 
         getNodes() { return this._state.nodes; }
         getLanes() { return this._state.lanes; }
+        getLaneColumns() { return this._state.laneColumns || []; }
         getEdges() { return this._state.edges; }
         getSettings() { return this._state.settings; }
 
@@ -94,6 +96,20 @@
                         }
                     }
                 }
+                if (updates.swimlaneColumn !== undefined && updates.swimlaneColumn !== node.swimlaneColumn) {
+                    const columnId = updates.swimlaneColumn;
+                    if (columnId) {
+                        const columns = this.getLaneColumns();
+                        const sortedColumns = [...columns].sort((a, b) => (a.order || 0) - (b.order || 0));
+                        const columnIdx = sortedColumns.findIndex(c => c.id === columnId);
+                        if (columnIdx !== -1) {
+                            const columnWidth = 240;
+                            const headerW = this._state.settings.laneOrientation === 'grid' ? 40 : 20;
+                            const columnX = headerW + columnIdx * (columnWidth + 2);
+                            updates.x = columnX + columnWidth / 2 - (updates.width || node.width || 140) / 2;
+                        }
+                    }
+                }
                 Object.assign(node, updates);
             }
             this._dirty = true;
@@ -123,6 +139,9 @@
             if (!nodeData.swimlane && this._state.lanes.length > 0) {
                 nodeData.swimlane = this._state.lanes[0].id;
             }
+            if (!nodeData.swimlaneColumn && this.getLaneColumns().length > 0) {
+                nodeData.swimlaneColumn = this.getLaneColumns()[0].id;
+            }
 
             // If swimlane is already set when adding a node, position it in that lane
             if (nodeData.swimlane) {
@@ -145,6 +164,17 @@
                         const laneX = 20 + laneIdx * (laneWidth + 2);
                         nodeData.x = laneX + laneWidth / 2 - (nodeData.width || 140) / 2;
                     }
+                }
+            }
+
+            if (nodeData.swimlaneColumn) {
+                const sortedColumns = [...this.getLaneColumns()].sort((a, b) => (a.order || 0) - (b.order || 0));
+                const columnIdx = sortedColumns.findIndex(c => c.id === nodeData.swimlaneColumn);
+                if (columnIdx !== -1) {
+                    const columnWidth = 240;
+                    const headerW = this._state.settings.laneOrientation === 'grid' ? 40 : 20;
+                    const columnX = headerW + columnIdx * (columnWidth + 2);
+                    nodeData.x = columnX + columnWidth / 2 - (nodeData.width || 140) / 2;
                 }
             }
             
@@ -186,6 +216,26 @@
             this._dirty = true;
             bus().emit('state:changed', this._state);
             bus().emit('lane:removed', laneId);
+            this._updateUndoRedoButtons();
+        }
+
+        addLaneColumn(column) {
+            this._pushHistory();
+            if (!this._state.laneColumns) this._state.laneColumns = [];
+            this._state.laneColumns.push(column);
+            this._dirty = true;
+            bus().emit('state:changed', this._state);
+            bus().emit('lane-column:added', column);
+            this._updateUndoRedoButtons();
+        }
+
+        removeLaneColumn(columnId) {
+            this._pushHistory();
+            this._state.laneColumns = this.getLaneColumns().filter(c => c.id !== columnId);
+            this._state.nodes.forEach(n => { if (n.swimlaneColumn === columnId) n.swimlaneColumn = ''; });
+            this._dirty = true;
+            bus().emit('state:changed', this._state);
+            bus().emit('lane-column:removed', columnId);
             this._updateUndoRedoButtons();
         }
 
@@ -257,6 +307,7 @@
             if (data.settings) Object.assign(merged.settings, data.settings);
             if (data.title) merged.title = data.title;
             if (data.lanes) merged.lanes = data.lanes;
+            if (data.laneColumns) merged.laneColumns = data.laneColumns;
             if (data.nodes) merged.nodes = data.nodes;
             if (data.edges) merged.edges = data.edges || [];
             this._state = merged;

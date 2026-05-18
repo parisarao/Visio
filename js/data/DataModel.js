@@ -52,6 +52,7 @@
                 description: overrides?.description || '',
                 shapeType: type,
                 swimlane: overrides?.swimlane || '',
+                swimlaneColumn: overrides?.swimlaneColumn || '',
                 nextStep: overrides?.nextStep || '',
                 yesPath: overrides?.yesPath || '',
                 noPath: overrides?.noPath || '',
@@ -130,6 +131,9 @@
 
                 if (node.swimlane && stateData.lanes && !stateData.lanes.find(function(l) { return l.id === node.swimlane; })) {
                     issues.push({ type: 'warning', message: '"' + node.stepId + '" references missing swimlane' });
+                }
+                if (node.swimlaneColumn && stateData.laneColumns && !stateData.laneColumns.find(function(l) { return l.id === node.swimlaneColumn; })) {
+                    issues.push({ type: 'warning', message: '"' + node.stepId + '" references missing column swimlane' });
                 }
 
                 if (node.nextStep === node.stepId) issues.push({ type: 'error', message: '"' + node.stepId + '" references itself' });
