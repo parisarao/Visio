@@ -43,6 +43,7 @@
             this._setupLayoutControls();
             this._setupLaneControls();
             bus().on('state:changed', () => this._refreshLaneList());
+            bus().on('settings:changed', () => this._syncLayoutControls());
             bus().on('state:loaded', () => {
                 this._refreshLaneList();
                 this._syncLayoutControls();
@@ -231,14 +232,16 @@
             const laneOrientationInput = document.getElementById('lane-orientation');
 
             if (spacingInput && spacingVal) {
+                let debounceTimeout = null;
                 spacingInput.addEventListener('input', (e) => {
                     const val = e.target.value;
                     spacingVal.textContent = val + 'px';
                     state().updateSettings({ nodeSpacing: parseInt(val, 10) });
-                });
 
-                spacingInput.addEventListener('change', () => {
-                    window.PMB.DiagramRenderer.autoLayout(true);
+                    if (debounceTimeout) clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => {
+                        window.PMB.DiagramRenderer.autoLayout(true);
+                    }, 50);
                 });
             }
 

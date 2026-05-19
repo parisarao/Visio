@@ -25,7 +25,7 @@
             if (!nodes || nodes.length === 0) return nodes;
 
             const settings = state().getSettings();
-            const minGap = settings.nodeSpacing || 80;
+            const minGap = Number(settings.nodeSpacing) || 80;
             const flowDirection = settings.flowDirection || 'horizontal';
 
             let dir = 'RIGHT';
