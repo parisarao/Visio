@@ -4,8 +4,8 @@
 (function () {
     'use strict';
 
-    const SHAPE_TYPES = ['start', 'end', 'process', 'decision', 'document', 'database', 'manualInput', 'delay', 'connector', 'subprocess', 'annotation', 'doubleAnnotation', 'balloonCallout', 'braceAnnotation'];
-
+    const SHAPE_TYPES = ['start', 'end', 'process', 'decision', 'document', 'database', 'manualInput', 'delay', 'connector', 'subprocess', 'annotation', 'doubleAnnotation', 'balloonCallout', 'braceAnnotation', 'stickyNote'];
+ 
     const SHAPE_DEFAULTS = {
         start:            { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
         end:              { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
@@ -20,7 +20,8 @@
         annotation:       { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
         doubleAnnotation: { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
         balloonCallout:   { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 60 },
-        braceAnnotation:  { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 }
+        braceAnnotation:  { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
+        stickyNote:       { bg: '#fef08a',     font: '#713f12', border: '#ca8a04', w: 120, h: 120 }
     };
 
     class DataModel {

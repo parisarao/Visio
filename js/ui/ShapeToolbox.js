@@ -33,7 +33,8 @@
         { type: 'annotation', label: 'Annotation', svg: '<path d="M12,5 L5,5 L5,23 L12,23" fill="none" stroke="#64748b" stroke-width="1.5"/><path d="M5,23 L1,27" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2,2"/>' },
         { type: 'doubleAnnotation', label: 'Double Annotation', svg: '<path d="M10,5 L4,5 L4,23 L10,23 M26,5 L32,5 L32,23 L26,23" fill="none" stroke="#64748b" stroke-width="1.5"/>' },
         { type: 'balloonCallout', label: 'Balloon Callout', svg: '<path d="M5,5 L31,5 A2,2 0 0,1 33,7 L33,18 A2,2 0 0,1 31,20 L15,20 L8,25 L10,20 L5,20 A2,2 0 0,1 3,18 L3,7 A2,2 0 0,1 5,5 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>' },
-        { type: 'braceAnnotation', label: 'Brace Annotation', svg: '<path d="M12,4 Q5,4 5,9 Q5,14 1,14 Q5,14 5,19 Q5,24 12,24" fill="none" stroke="#64748b" stroke-width="1.8"/>' }
+        { type: 'braceAnnotation', label: 'Brace Annotation', svg: '<path d="M12,4 Q5,4 5,9 Q5,14 1,14 Q5,14 5,19 Q5,24 12,24" fill="none" stroke="#64748b" stroke-width="1.8"/>' },
+        { type: 'stickyNote', label: 'Sticky Note', svg: '<rect x="4" y="4" width="28" height="20" rx="1.5" fill="#fef08a" stroke="#ca8a04" stroke-width="0.8"/><path d="M26,1 L26,8 A1.5,1.5 0 0,0 29,8 L29,3 A2.5,2.5 0 0,0 24,3 L24,10" fill="none" stroke="#ef4444" stroke-width="0.8"/>' }
     ];
 
     const ShapeToolbox = {

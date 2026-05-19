@@ -174,6 +174,9 @@
                 maxTextWidth = w - 20;
                 usableHeight = h - 16;
                 startYOffset = -4; // Nudge slightly up above the bottom pointer pointer
+            } else if (type === 'stickyNote') {
+                maxTextWidth = w - 24;
+                usableHeight = h - 24;
             }
 
             maxTextWidth = Math.max(20, maxTextWidth);
@@ -267,6 +270,7 @@
                 case 'doubleAnnotation': return this._doubleAnnotation(w, h, fill, stroke, node);
                 case 'balloonCallout': return this._balloonCallout(w, h, fill, stroke, node);
                 case 'braceAnnotation': return this._braceAnnotation(w, h, fill, stroke, node);
+                case 'stickyNote': return this._stickyNote(w, h, fill, stroke, node);
                 default: return this._rect(w, h, fill, stroke, 6);
             }
         },
@@ -501,6 +505,57 @@
             // Invisible background
             const bg = el('rect', { x: 0, y: 0, width: w, height: h, fill: 'transparent', stroke: 'none', 'pointer-events': 'all' });
             g.insertBefore(bg, brace);
+            return g;
+        },
+
+        _stickyNote(w, h, fill, stroke, node) {
+            const g = el('g');
+            
+            // If the user hasn't overridden the color, use a beautiful pastel yellow default!
+            let noteFill = fill;
+            if (fill === 'none' || fill === 'transparent') {
+                noteFill = '#fef08a'; // Beautiful sticky note yellow
+            }
+            
+            // Asymmetric curled sticky note path
+            const d = `M 0,0 L ${w},0 L ${w},${h - 8} Q ${w * 0.75},${h - 8} ${w * 0.5},${h - 4} Q ${w * 0.2},${h + 2} 0,${h - 3} Z`;
+            
+            const paper = el('path', {
+                d,
+                fill: noteFill,
+                stroke,
+                'stroke-width': '1.5',
+                filter: 'url(#drop-shadow)',
+                'pointer-events': 'all'
+            });
+            g.appendChild(paper);
+            
+            // Red paperclip at the top right with 3D drop-shadow
+            const clipG = el('g', { transform: `translate(${w - 35}, -4) rotate(15)` });
+            
+            const shadowClip = el('path', {
+                d: 'M 0,5 L 0,22 A 4,4 0 0,0 8,22 L 8,7 A 6,6 0 0,0 -4,7 L -4,27 A 8,8 0 0,0 12,27 L 12,12',
+                fill: 'none',
+                stroke: 'rgba(0, 0, 0, 0.2)',
+                'stroke-width': '2.2',
+                'stroke-linecap': 'round',
+                'stroke-linejoin': 'round',
+                transform: 'translate(1, 1.5)'
+            });
+            
+            const realClip = el('path', {
+                d: 'M 0,5 L 0,22 A 4,4 0 0,0 8,22 L 8,7 A 6,6 0 0,0 -4,7 L -4,27 A 8,8 0 0,0 12,27 L 12,12',
+                fill: 'none',
+                stroke: '#ef4444', // Red color
+                'stroke-width': '2.2',
+                'stroke-linecap': 'round',
+                'stroke-linejoin': 'round'
+            });
+            
+            clipG.appendChild(shadowClip);
+            clipG.appendChild(realClip);
+            g.appendChild(clipG);
+            
             return g;
         },
 
