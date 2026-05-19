@@ -531,7 +531,7 @@
             g.appendChild(paper);
             
             // Red paperclip at the top right with 3D drop-shadow
-            const clipG = el('g', { transform: `translate(${w - 30}, -3) rotate(15) scale(0.75)` });
+            const clipG = el('g', { transform: `translate(${w - 24}, -2) rotate(15) scale(0.5)` });
             
             const shadowClip = el('path', {
                 d: 'M 0,5 L 0,22 A 4,4 0 0,0 8,22 L 8,7 A 6,6 0 0,0 -4,7 L -4,27 A 8,8 0 0,0 12,27 L 12,12',
