@@ -135,6 +135,33 @@
                 usableHeight = h * 0.8;
             } else if (type === 'start' || type === 'end') {
                 maxTextWidth = w - 32; // avoid curved stadium sides
+            } else if (type === 'predefinedProcess') {
+                maxTextWidth = w - 36;
+            } else if (type === 'storedData') {
+                maxTextWidth = w * 0.76;
+            } else if (type === 'internalStorage') {
+                maxTextWidth = w - 24;
+                usableHeight = h - 14;
+                startYOffset = 6;
+            } else if (type === 'sequentialData') {
+                maxTextWidth = w * 0.64;
+                usableHeight = h * 0.64;
+            } else if (type === 'directData') {
+                maxTextWidth = w * 0.76;
+            } else if (type === 'card') {
+                maxTextWidth = w - 20;
+            } else if (type === 'paperTape') {
+                maxTextWidth = w - 20;
+                usableHeight = h * 0.7;
+            } else if (type === 'display') {
+                maxTextWidth = w * 0.72;
+            } else if (type === 'manualOperation') {
+                maxTextWidth = w * 0.72;
+            } else if (type === 'preparation') {
+                maxTextWidth = w * 0.72;
+            } else if (type === 'annotation') {
+                maxTextWidth = w - 26;
+                startYOffset = 0;
             }
 
             maxTextWidth = Math.max(20, maxTextWidth);
@@ -200,6 +227,17 @@
                 case 'delay': return this._dShape(w, h, fill, stroke);
                 case 'connector': return this._circle(w, h, fill, stroke);
                 case 'subprocess': return this._subprocess(w, h, fill, stroke);
+                case 'predefinedProcess': return this._predefinedProcess(w, h, fill, stroke);
+                case 'storedData': return this._storedData(w, h, fill, stroke);
+                case 'internalStorage': return this._internalStorage(w, h, fill, stroke);
+                case 'sequentialData': return this._sequentialData(w, h, fill, stroke);
+                case 'directData': return this._directData(w, h, fill, stroke);
+                case 'card': return this._card(w, h, fill, stroke);
+                case 'paperTape': return this._paperTape(w, h, fill, stroke);
+                case 'display': return this._display(w, h, fill, stroke);
+                case 'manualOperation': return this._manualOperation(w, h, fill, stroke);
+                case 'preparation': return this._preparation(w, h, fill, stroke);
+                case 'annotation': return this._annotation(w, h, fill, stroke);
                 default: return this._rect(w, h, fill, stroke, 6);
             }
         },
@@ -285,6 +323,118 @@
             // Inner border
             const inset = 5;
             g.appendChild(el('rect', { x: inset, y: inset, width: w - inset * 2, height: h - inset * 2, rx: 3, ry: 3, fill: 'none', stroke, 'stroke-width': '0.8', opacity: '0.5', 'pointer-events': 'none' }));
+            return g;
+        },
+
+        _predefinedProcess(w, h, fill, stroke) {
+            const g = el('g');
+            const rect = el('rect', { x: 0, y: 0, width: w, height: h, rx: 6, ry: 6, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+            g.appendChild(rect);
+            // Left vertical line
+            g.appendChild(el('line', { x1: 12, y1: 0, x2: 12, y2: h, stroke, 'stroke-width': '1.5' }));
+            // Right vertical line
+            g.appendChild(el('line', { x1: w - 12, y1: 0, x2: w - 12, y2: h, stroke, 'stroke-width': '1.5' }));
+            return g;
+        },
+
+        _storedData(w, h, fill, stroke) {
+            const curve = w * 0.1;
+            const d = `M${curve},0 L${w},0 Q${w - curve},${h/2} ${w},${h} L${curve},${h} Q0,${h/2} ${curve},0 Z`;
+            return el('path', { d, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _internalStorage(w, h, fill, stroke) {
+            const g = el('g');
+            const rect = el('rect', { x: 0, y: 0, width: w, height: h, rx: 6, ry: 6, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+            g.appendChild(rect);
+            // Horizontal line at y=10
+            g.appendChild(el('line', { x1: 0, y1: 10, x2: w, y2: 10, stroke, 'stroke-width': '1.5' }));
+            // Vertical line at x=10
+            g.appendChild(el('line', { x1: 10, y1: 0, x2: 10, y2: h, stroke, 'stroke-width': '1.5' }));
+            return g;
+        },
+
+        _sequentialData(w, h, fill, stroke) {
+            const g = el('g');
+            const r = Math.min(w, h) * 0.4;
+            const cx = w / 2;
+            const cy = h / 2 - 2;
+            // Tape circle
+            g.appendChild(el('circle', { cx, cy, r, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' }));
+            // Tape tail extending to bottom-right
+            const tailY = cy + r;
+            g.appendChild(el('line', { x1: cx - r, y1: tailY, x2: cx + r + 10, y2: tailY, stroke, 'stroke-width': '1.5' }));
+            return g;
+        },
+
+        _directData(w, h, fill, stroke) {
+            const rx = w * 0.08;
+            const g = el('g');
+            // Body
+            g.appendChild(el('path', {
+                d: `M${rx},0 L${w - rx},0 A${rx},${h/2} 0 0,1 ${w - rx},${h} L${rx},${h} A${rx},${h/2} 0 0,1 ${rx},0 Z`,
+                fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all'
+            }));
+            // Left ellipse
+            g.appendChild(el('ellipse', {
+                cx: rx, cy: h / 2, rx, ry: h / 2,
+                fill, stroke, 'stroke-width': '1.5', 'pointer-events': 'all'
+            }));
+            // Right ellipse
+            g.appendChild(el('ellipse', {
+                cx: w - rx, cy: h / 2, rx, ry: h / 2,
+                fill: 'none', stroke, 'stroke-width': '1.5', 'pointer-events': 'all'
+            }));
+            return g;
+        },
+
+        _card(w, h, fill, stroke) {
+            const cut = Math.min(w, h) * 0.15;
+            const points = `${cut},0 ${w},0 ${w},${h} 0,${h} 0,${cut}`;
+            return el('polygon', { points, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _paperTape(w, h, fill, stroke) {
+            const wave = h * 0.12;
+            const d = `M0,${wave} Q${w*0.25},0 ${w*0.5},${wave} Q${w*0.75},${wave*2} ${w},${wave} L${w},${h - wave} Q${w*0.75},${h} ${w*0.5},${h - wave} Q${w*0.25},${h - wave*2} 0,${h - wave} Z`;
+            return el('path', { d, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _display(w, h, fill, stroke) {
+            const cut = w * 0.12;
+            const r = h / 2;
+            const d = `M${cut},0 L${w - r},0 A${r},${r} 0 0,1 ${w - r},${h} L${cut},${h} L0,${h/2} Z`;
+            return el('path', { d, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _manualOperation(w, h, fill, stroke) {
+            const inset = w * 0.12;
+            const points = `0,0 ${w},0 ${w - inset},${h} ${inset},${h}`;
+            return el('polygon', { points, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _preparation(w, h, fill, stroke) {
+            const inset = w * 0.12;
+            const points = `${inset},0 ${w - inset},0 ${w},${h/2} ${w - inset},${h} ${inset},${h} 0,${h/2}`;
+            return el('polygon', { points, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _annotation(w, h, fill, stroke) {
+            const g = el('g');
+            // Open bracket on the left: M15,2 L3,2 L3,h-2 L15,h-2
+            const bracketD = `M15,2 L3,2 L3,${h - 2} L15,${h - 2}`;
+            const bracket = el('path', { d: bracketD, fill: 'none', stroke, 'stroke-width': '1.5', 'pointer-events': 'all' });
+            g.appendChild(bracket);
+            
+            // Slanted pointer line extending from bottom-left corner of the bracket
+            const lineD = `M3,${h - 2} L-15,${h + 15}`;
+            const pointer = el('path', { d: lineD, fill: 'none', stroke, 'stroke-width': '1.5', 'stroke-dasharray': '3,3', 'pointer-events': 'none' });
+            g.appendChild(pointer);
+            
+            // Invisible background rect for easy selection/hovering on canvas
+            const bg = el('rect', { x: 0, y: 0, width: w, height: h, fill: 'transparent', stroke: 'none', 'pointer-events': 'all' });
+            g.insertBefore(bg, bracket);
+            
             return g;
         },
 

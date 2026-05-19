@@ -19,7 +19,18 @@
         { type: 'manualInput', label: 'Manual Input', svg: '<polygon points="7,4 33,4 30,24 3,24" fill="#06b6d4" stroke="#0891b2"/>' },
         { type: 'delay', label: 'Delay', svg: '<path d="M3,4 L25,4 A10,10 0 0,1 25,24 L3,24 Z" fill="#f97316" stroke="#ea580c"/>' },
         { type: 'connector', label: 'Connector', svg: '<circle cx="18" cy="14" r="10" fill="#64748b" stroke="#475569"/>' },
-        { type: 'subprocess', label: 'Subprocess', svg: '<rect x="3" y="5" width="30" height="18" rx="3" fill="#10b981" stroke="#059669"/><rect x="6" y="8" width="24" height="12" rx="2" fill="none" stroke="#059669" opacity="0.5"/>' }
+        { type: 'subprocess', label: 'Subprocess', svg: '<rect x="3" y="5" width="30" height="18" rx="3" fill="#10b981" stroke="#059669"/><rect x="6" y="8" width="24" height="12" rx="2" fill="none" stroke="#059669" opacity="0.5"/>' },
+        { type: 'predefinedProcess', label: 'Predefined Process', svg: '<rect x="3" y="5" width="30" height="18" rx="3" fill="#14b8a6" stroke="#0d9488"/><line x1="8" y1="5" x2="8" y2="23" stroke="#0d9488"/><line x1="28" y1="5" x2="28" y2="23" stroke="#0d9488"/>' },
+        { type: 'storedData', label: 'Stored Data', svg: '<path d="M6,5 L33,5 Q30,14 33,23 L6,23 Q3,14 6,5 Z" fill="#ec4899" stroke="#db2777"/>' },
+        { type: 'internalStorage', label: 'Internal Storage', svg: '<rect x="3" y="5" width="30" height="18" rx="3" fill="#f43f5e" stroke="#e11d48"/><line x1="3" y1="9" x2="33" y2="9" stroke="#e11d48"/><line x1="8" y1="5" x2="8" y2="23" stroke="#e11d48"/>' },
+        { type: 'sequentialData', label: 'Sequential Data', svg: '<circle cx="18" cy="12" r="8" fill="#a855f7" stroke="#9333ea"/><line x1="10" y1="20" x2="26" y2="20" stroke="#9333ea"/>' },
+        { type: 'directData', label: 'Direct Data', svg: '<path d="M6,5 L30,5 A4,9 0 0,1 30,23 L6,23 A4,9 0 0,1 6,5 Z" fill="#6366f1" stroke="#4f46e5"/><ellipse cx="6" cy="14" rx="3" ry="9" fill="#6366f1" stroke="#4f46e5"/><ellipse cx="30" cy="14" rx="3" ry="9" fill="none" stroke="#4f46e5"/>' },
+        { type: 'card', label: 'Card', svg: '<polygon points="8,5 33,5 33,23 3,23 3,10" fill="#fb923c" stroke="#f97316"/>' },
+        { type: 'paperTape', label: 'Paper Tape', svg: '<path d="M3,7 Q11,4 18,7 Q25,10 33,7 L33,21 Q25,24 18,21 Q11,18 3,21 Z" fill="#22c55e" stroke="#16a34a"/>' },
+        { type: 'display', label: 'Display', svg: '<path d="M7,5 L28,5 A9,9 0 0,1 28,23 L7,23 L3,14 Z" fill="#eab308" stroke="#ca8a04"/>' },
+        { type: 'manualOperation', label: 'Manual Operation', svg: '<polygon points="3,5 33,5 29,23 7,23" fill="#06b6d4" stroke="#0891b2"/>' },
+        { type: 'preparation', label: 'Preparation', svg: '<polygon points="7,5 29,5 33,14 29,23 7,23 3,14" fill="#a855f7" stroke="#9333ea"/>' },
+        { type: 'annotation', label: 'Annotation', svg: '<path d="M12,5 L5,5 L5,23 L12,23" fill="none" stroke="#64748b" stroke-width="1.5"/><path d="M5,23 L1,27" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2,2"/>' }
     ];
 
     const ShapeToolbox = {
