@@ -28,9 +28,16 @@
             const src = shapes().getPort(sourceNode, ports.source);
             const tgt = shapes().getPort(targetNode, ports.target);
 
+            const isAnnotation = (sourceNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(sourceNode.shapeType)) || 
+                                 (targetNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(targetNode.shapeType));
+
             let pathD;
             let points = [];
-            if (edge.waypoints && edge.waypoints.length > 0) {
+            if (isAnnotation) {
+                // Annotations always use clean slanting/slanted straight paths directly between ports
+                pathD = this._straightPath(src, tgt);
+                points = [src, tgt];
+            } else if (edge.waypoints && edge.waypoints.length > 0) {
                 const res = this._customOrthogonalPath(src, tgt, edge.waypoints);
                 pathD = res.d;
                 points = res.points;
@@ -48,9 +55,6 @@
             g.setAttribute('data-points', JSON.stringify(points));
 
             // Determine marker and color
-            const isAnnotation = (sourceNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(sourceNode.shapeType)) || 
-                                 (targetNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(targetNode.shapeType));
-
             let markerEnd = isAnnotation ? 'none' : 'url(#arrowhead)';
             let color = edge.color || '#64748b';
             if (edge.type === 'yes') { markerEnd = 'url(#arrowhead-yes)'; color = '#22c55e'; }

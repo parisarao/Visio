@@ -75,6 +75,8 @@
                 yesFlowDir: overrides?.yesFlowDir || 'default',
                 noFlowDir: overrides?.noFlowDir || 'default',
                 stepSpacing: overrides?.stepSpacing !== undefined ? overrides.stepSpacing : null,
+                fontSize: overrides?.fontSize !== undefined ? overrides.fontSize : null,
+                fontStyle: overrides?.fontStyle !== undefined ? overrides.fontStyle : '',
                 edgeRouting: overrides?.edgeRouting || {},
                 x: overrides?.x || 0,
                 y: overrides?.y || 0

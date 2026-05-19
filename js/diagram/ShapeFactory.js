@@ -31,22 +31,24 @@
         return _textMeasurer;
     }
 
-    function measureTextWidth(text, fontSize, fontFamily) {
+    function measureTextWidth(text, fontSize, fontFamily, fontStyle, fontWeight) {
         const textEl = getTextMeasurer();
         if (fontSize) textEl.setAttribute('font-size', fontSize);
         if (fontFamily) textEl.setAttribute('font-family', fontFamily);
+        textEl.setAttribute('font-style', fontStyle || 'normal');
+        textEl.setAttribute('font-weight', fontWeight || 'normal');
         textEl.textContent = text;
         return textEl.getComputedTextLength();
     }
 
-    function wrapLabelText(label, maxWidth, fontSize, fontFamily) {
+    function wrapLabelText(label, maxWidth, fontSize, fontFamily, fontStyle, fontWeight) {
         const words = label.split(/\s+/);
         const lines = [];
         let current = '';
 
         words.forEach(word => {
             const testLine = current ? `${current} ${word}` : word;
-            if (measureTextWidth(testLine, fontSize, fontFamily) <= maxWidth) {
+            if (measureTextWidth(testLine, fontSize, fontFamily, fontStyle, fontWeight) <= maxWidth) {
                 current = testLine;
                 return;
             }
@@ -56,7 +58,7 @@
                 current = '';
             }
 
-            if (measureTextWidth(word, fontSize, fontFamily) <= maxWidth) {
+            if (measureTextWidth(word, fontSize, fontFamily, fontStyle, fontWeight) <= maxWidth) {
                 current = word;
                 return;
             }
@@ -64,7 +66,7 @@
             let chunk = '';
             for (const ch of word) {
                 const nextChunk = chunk + ch;
-                if (measureTextWidth(nextChunk, fontSize, fontFamily) <= maxWidth) {
+                if (measureTextWidth(nextChunk, fontSize, fontFamily, fontStyle, fontWeight) <= maxWidth) {
                     chunk = nextChunk;
                     continue;
                 }
@@ -93,14 +95,20 @@
 
             const settings = (window.PMB && window.PMB.StateManager) ? window.PMB.StateManager.getSettings() : {};
             
-            // 1. Auto-adjust font size and line height based on shape scale
+            // 1. Determine font size: node override > global default > shape scale defaults
             let fontSize = 12;
-            if (w >= 220 && h >= 100) {
-                fontSize = 15;
-            } else if (w >= 170 && h >= 80) {
-                fontSize = 13;
-            } else if (w < 90 || h < 45) {
-                fontSize = 10;
+            if (node.fontSize !== undefined && node.fontSize !== null && node.fontSize !== '') {
+                fontSize = parseInt(node.fontSize, 10) || 12;
+            } else if (settings.defaultShapeFontSize !== undefined && settings.defaultShapeFontSize !== null && settings.defaultShapeFontSize !== '') {
+                fontSize = parseInt(settings.defaultShapeFontSize, 10) || 12;
+            } else {
+                if (w >= 220 && h >= 100) {
+                    fontSize = 15;
+                } else if (w >= 170 && h >= 80) {
+                    fontSize = 13;
+                } else if (w < 90 || h < 45) {
+                    fontSize = 10;
+                }
             }
             const lineH = fontSize + 2;
             const fontFamily = 'Inter, sans-serif';
@@ -170,20 +178,34 @@
 
             maxTextWidth = Math.max(20, maxTextWidth);
 
+            // 2. Determine font style and font weight: node override > global default > baseline normal
+            const fontStyleVal = node.fontStyle || settings.defaultShapeFontStyle || 'normal';
+            let fStyle = 'normal';
+            let fWeight = '500';
+            if (fontStyleVal === 'italic') {
+                fStyle = 'italic';
+            } else if (fontStyleVal === 'bold') {
+                fWeight = 'bold';
+            } else if (fontStyleVal === 'bold-italic' || fontStyleVal === 'italic-bold') {
+                fStyle = 'italic';
+                fWeight = 'bold';
+            }
+
             // Text Element
             const text = el('text', {
                 'text-anchor': 'middle',
                 fill: node.fontColor !== undefined && node.fontColor !== '' ? node.fontColor : (settings.defaultShapeFont || '#000000'),
                 'font-size': fontSize + '',
-                'font-weight': '500',
+                'font-weight': fWeight,
+                'font-style': fStyle,
                 'font-family': fontFamily,
                 class: 'node-text'
             });
 
             const label = node.stepName || node.stepId;
-            const lines = measureTextWidth(label, fontSize + '', fontFamily) <= maxTextWidth
+            const lines = measureTextWidth(label, fontSize + '', fontFamily, fStyle, fWeight) <= maxTextWidth
                 ? [label]
-                : wrapLabelText(label, maxTextWidth, fontSize + '', fontFamily);
+                : wrapLabelText(label, maxTextWidth, fontSize + '', fontFamily, fStyle, fWeight);
 
             // Calculate max lines based on shape's usable height
             const maxLines = Math.max(1, Math.floor((usableHeight - 8) / lineH));
@@ -191,7 +213,7 @@
                 const clipped = lines.slice(0, maxLines);
                 let lastLine = clipped[maxLines - 1];
                 const ellipsis = '…';
-                while (lastLine.length > 0 && measureTextWidth(lastLine + ellipsis, fontSize + '', fontFamily) > maxTextWidth) {
+                while (lastLine.length > 0 && measureTextWidth(lastLine + ellipsis, fontSize + '', fontFamily, fStyle, fWeight) > maxTextWidth) {
                     lastLine = lastLine.slice(0, -1);
                 }
                 clipped[maxLines - 1] = lastLine + ellipsis;

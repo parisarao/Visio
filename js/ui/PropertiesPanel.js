@@ -50,6 +50,8 @@
                 { el: 'prop-no-label', field: 'noLabel' },
                 { el: 'prop-font-color', field: 'fontColor' },
                 { el: 'prop-border-color', field: 'borderColor' },
+                { el: 'prop-font-size', field: 'fontSize', type: 'number' },
+                { el: 'prop-font-style', field: 'fontStyle' },
                 { el: 'prop-width', field: 'width', type: 'number' },
                 { el: 'prop-height', field: 'height', type: 'number' },
                 { el: 'prop-x-pos', field: 'x', type: 'number' },
@@ -66,7 +68,7 @@
                     if (this._updating || !this._currentNodeId) return;
                     let val = input.value;
                     if (f.type === 'number') {
-                        if (f.field === 'stepSpacing') {
+                        if (f.field === 'stepSpacing' || f.field === 'fontSize') {
                             val = val === '' ? null : (parseInt(val, 10) || 0);
                         } else {
                             val = parseInt(val, 10) || 0;
@@ -80,12 +82,12 @@
                     }
                 });
                 // Also listen to input for text fields for live preview
-                if (input.type === 'text' || input.tagName === 'TEXTAREA' || f.el === 'prop-x-pos' || f.el === 'prop-y-pos' || f.el === 'prop-step-spacing') {
+                if (input.type === 'text' || input.tagName === 'TEXTAREA' || f.el === 'prop-x-pos' || f.el === 'prop-y-pos' || f.el === 'prop-step-spacing' || f.el === 'prop-font-size') {
                     input.addEventListener('input', () => {
                         if (this._updating || !this._currentNodeId) return;
                         let val = input.value;
                         if (f.type === 'number') {
-                            if (f.field === 'stepSpacing') {
+                            if (f.field === 'stepSpacing' || f.field === 'fontSize') {
                                 val = val === '' ? null : (parseInt(val, 10) || 0);
                             } else {
                                 val = parseInt(val, 10) || 0;
@@ -288,6 +290,8 @@
                 { elId: 'default-shape-bg', transId: 'default-shape-bg-trans', key: 'defaultShapeBg' },
                 { elId: 'default-shape-font', key: 'defaultShapeFont' },
                 { elId: 'default-shape-border', key: 'defaultShapeBorder' },
+                { elId: 'default-shape-font-size', key: 'defaultShapeFontSize', type: 'number' },
+                { elId: 'default-shape-font-style', key: 'defaultShapeFontStyle' },
                 { elId: 'default-lane-header-bg', transId: 'default-lane-header-bg-trans', key: 'defaultLaneHeaderBg' },
                 { elId: 'default-lane-header-font', key: 'defaultLaneHeaderFont' },
                 { elId: 'default-lane-border', key: 'defaultLaneBorder' },
@@ -306,6 +310,9 @@
                     if (this._updating) return;
                     const settings = state().getSettings();
                     let val = colorEl.value;
+                    if (f.type === 'number') {
+                        val = parseInt(val, 10) || 12;
+                    }
                     if (transEl) {
                         colorEl.disabled = transEl.checked;
                         if (transEl.checked) {
@@ -465,6 +472,8 @@
                 { elId: 'default-shape-bg', transId: 'default-shape-bg-trans', key: 'defaultShapeBg' },
                 { elId: 'default-shape-font', key: 'defaultShapeFont' },
                 { elId: 'default-shape-border', key: 'defaultShapeBorder' },
+                { elId: 'default-shape-font-size', key: 'defaultShapeFontSize', type: 'number' },
+                { elId: 'default-shape-font-style', key: 'defaultShapeFontStyle' },
                 { elId: 'default-lane-header-bg', transId: 'default-lane-header-bg-trans', key: 'defaultLaneHeaderBg' },
                 { elId: 'default-lane-header-font', key: 'defaultLaneHeaderFont' },
                 { elId: 'default-lane-border', key: 'defaultLaneBorder' },
@@ -478,7 +487,13 @@
                 const transEl = f.transId ? document.getElementById(f.transId) : null;
                 if (!colorEl) return;
 
-                const val = settings[f.key] !== undefined ? settings[f.key] : (f.key.toLowerCase().includes('bg') ? 'transparent' : '#000000');
+                let val = settings[f.key];
+                if (val === undefined) {
+                    if (f.key === 'defaultShapeFontSize') val = 12;
+                    else if (f.key === 'defaultShapeFontStyle') val = 'normal';
+                    else val = f.key.toLowerCase().includes('bg') ? 'transparent' : '#000000';
+                }
+
                 if (transEl) {
                     const isTrans = val === 'transparent';
                     transEl.checked = isTrans;
@@ -588,6 +603,9 @@
             document.getElementById('prop-font-color').value = fontVal === 'transparent' ? '#000000' : fontVal;
             document.getElementById('prop-border-color').value = borderVal === 'transparent' ? '#000000' : borderVal;
             
+            document.getElementById('prop-font-size').value = (node.fontSize !== null && node.fontSize !== undefined) ? node.fontSize : '';
+            document.getElementById('prop-font-style').value = node.fontStyle || '';
+
             document.getElementById('prop-width').value = node.width || 140;
             document.getElementById('prop-height').value = node.height || 60;
             document.getElementById('prop-x-pos').value = Math.round(node.x || 0);

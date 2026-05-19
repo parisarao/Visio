@@ -28,6 +28,8 @@
                     defaultShapeBg: 'transparent',
                     defaultShapeFont: '#000000',
                     defaultShapeBorder: '#000000',
+                    defaultShapeFontSize: 12,
+                    defaultShapeFontStyle: 'normal',
                     defaultLaneHeaderBg: 'transparent',
                     defaultLaneHeaderFont: '#000000',
                     defaultLaneBorder: '#000000',
