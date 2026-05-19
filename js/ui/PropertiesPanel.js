@@ -46,6 +46,8 @@
                 { el: 'prop-next-step', field: 'nextStep' },
                 { el: 'prop-yes-path', field: 'yesPath' },
                 { el: 'prop-no-path', field: 'noPath' },
+                { el: 'prop-yes-label', field: 'yesLabel' },
+                { el: 'prop-no-label', field: 'noLabel' },
                 { el: 'prop-font-color', field: 'fontColor' },
                 { el: 'prop-border-color', field: 'borderColor' },
                 { el: 'prop-width', field: 'width', type: 'number' },
@@ -122,6 +124,32 @@
                 };
                 multiYInput.addEventListener('change', handleMultiY);
                 multiYInput.addEventListener('input', handleMultiY);
+            }
+
+            const multiWidthInput = document.getElementById('prop-multi-width');
+            if (multiWidthInput) {
+                const handleMultiWidth = () => {
+                    if (this._updating) return;
+                    const val = parseInt(multiWidthInput.value, 10);
+                    if (!isNaN(val) && window.PMB.SelectionManager) {
+                        window.PMB.SelectionManager.setMultiWidth(val);
+                    }
+                };
+                multiWidthInput.addEventListener('change', handleMultiWidth);
+                multiWidthInput.addEventListener('input', handleMultiWidth);
+            }
+
+            const multiHeightInput = document.getElementById('prop-multi-height');
+            if (multiHeightInput) {
+                const handleMultiHeight = () => {
+                    if (this._updating) return;
+                    const val = parseInt(multiHeightInput.value, 10);
+                    if (!isNaN(val) && window.PMB.SelectionManager) {
+                        window.PMB.SelectionManager.setMultiHeight(val);
+                    }
+                };
+                multiHeightInput.addEventListener('change', handleMultiHeight);
+                multiHeightInput.addEventListener('input', handleMultiHeight);
             }
 
             // Bind multi-select alignment and distribution buttons
@@ -401,6 +429,10 @@
                     const first = selNodes[0];
                     document.getElementById('prop-multi-x-pos').value = Math.round(first.x || 0);
                     document.getElementById('prop-multi-y-pos').value = Math.round(first.y || 0);
+                    const multiWidth = document.getElementById('prop-multi-width');
+                    const multiHeight = document.getElementById('prop-multi-height');
+                    if (multiWidth) multiWidth.value = Math.round(first.width || 140);
+                    if (multiHeight) multiHeight.value = Math.round(first.height || 60);
                     
                     const multiBg = document.getElementById('prop-multi-bg-color');
                     const multiBgTrans = document.getElementById('prop-multi-bg-trans');
@@ -512,6 +544,10 @@
             document.getElementById('prop-next-step').value = node.nextStep || '';
             document.getElementById('prop-yes-path').value = node.yesPath || '';
             document.getElementById('prop-no-path').value = node.noPath || '';
+            const yesLabelEl = document.getElementById('prop-yes-label');
+            const noLabelEl = document.getElementById('prop-no-label');
+            if (yesLabelEl) yesLabelEl.value = node.yesLabel || 'Yes';
+            if (noLabelEl) noLabelEl.value = node.noLabel || 'No';
 
             this._updateFlowUI(node.shapeType || 'process');
 

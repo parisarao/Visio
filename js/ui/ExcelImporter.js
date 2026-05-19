@@ -23,6 +23,8 @@
         { value: 'borderColor', text: 'Border Color' },
         { value: 'connectionLineColor', text: 'Line Color' },
         { value: 'connectionLabel', text: 'Conn. Label' },
+        { value: 'yesLabel', text: 'Yes Label' },
+        { value: 'noLabel', text: 'No Label' },
         { value: 'width', text: 'Width' },
         { value: 'height', text: 'Height' },
         { value: 'icon', text: 'Icon' },
@@ -222,6 +224,8 @@
                 nextStep: ['next step', 'nextstep', 'next', 'next_step', 'following', 'goto', 'go to'],
                 yesPath: ['yes path', 'yespath', 'yes', 'yes_path', 'yes step', 'if yes', 'yes route'],
                 noPath: ['no path', 'nopath', 'no', 'no_path', 'no step', 'if no', 'no route'],
+                yesLabel: ['yes label', 'yeslabel', 'if yes label', 'yes_label'],
+                noLabel: ['no label', 'nolabel', 'if no label', 'no_label'],
                 backgroundColor: ['bg color', 'bgcolor', 'background', 'fill color', 'fill', 'color'],
                 fontColor: ['font color', 'fontcolor', 'text color', 'text_color'],
                 borderColor: ['border color', 'bordercolor', 'border'],
@@ -318,11 +322,11 @@
                 const headerLabel = hasHeaders ? (firstRow[c] || `Column ${c + 1}`) : `Column ${c + 1}`;
                 
                 // Set initial mapping field
-                let selectedField = '';
+                    let selectedField = '';
                 if (hasHeaders) {
                     selectedField = autoMapping[c] || '';
                 } else {
-                    const defaultOrder = ['stepId', 'stepName', 'description', 'shapeType', 'swimlane', 'nextStep', 'yesPath', 'noPath'];
+                    const defaultOrder = ['stepId', 'stepName', 'description', 'shapeType', 'swimlane', 'nextStep', 'yesPath', 'noPath', 'yesLabel', 'noLabel'];
                     selectedField = defaultOrder[c] || '';
                 }
 
@@ -612,6 +616,8 @@
                     nextStep: rawNode.nextStep || '',
                     yesPath: rawNode.yesPath || '',
                     noPath: rawNode.noPath || '',
+                    yesLabel: rawNode.yesLabel || undefined,
+                    noLabel: rawNode.noLabel || undefined,
                     backgroundColor: rawNode.backgroundColor || undefined,
                     fontColor: rawNode.fontColor || undefined,
                     borderColor: rawNode.borderColor || undefined,

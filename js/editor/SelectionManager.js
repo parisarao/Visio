@@ -100,6 +100,16 @@
             this._selected.forEach(id => state().updateNode(id, { y: val }));
         },
 
+        setMultiWidth(val) {
+            if (this._selected.length === 0) return;
+            this._selected.forEach(id => state().updateNode(id, { width: val }));
+        },
+
+        setMultiHeight(val) {
+            if (this._selected.length === 0) return;
+            this._selected.forEach(id => state().updateNode(id, { height: val }));
+        },
+
         setMultiStyle(field, val) {
             if (this._selected.length === 0) return;
             this._selected.forEach(id => state().updateNode(id, { [field]: val }));

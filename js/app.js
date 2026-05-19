@@ -36,6 +36,11 @@
         PMB.ThemeManager.init();
         PMB.KeyboardShortcuts.init();
 
+        // Initialize Excel Repository Backend
+        if (PMB.ExcelRepositoryManager) {
+            PMB.ExcelRepositoryManager.init();
+        }
+
         // Initialize diagram
         PMB.DiagramRenderer.init();
         PMB.Minimap.init();

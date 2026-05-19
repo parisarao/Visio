@@ -15,6 +15,7 @@
         { type: 'decision', label: 'Decision', svg: '<polygon points="18,2 33,14 18,26 3,14" fill="#f59e0b" stroke="#d97706"/>' },
         { type: 'document', label: 'Document', svg: '<path d="M3,4 L33,4 L33,22 Q25,18 18,22 Q11,26 3,22 Z" fill="#3b82f6" stroke="#2563eb"/>' },
         { type: 'database', label: 'Database', svg: '<ellipse cx="18" cy="8" rx="14" ry="4" fill="#8b5cf6" stroke="#7c3aed"/><path d="M4,8 L4,20" stroke="#7c3aed" fill="none"/><path d="M32,8 L32,20" stroke="#7c3aed" fill="none"/><ellipse cx="18" cy="20" rx="14" ry="4" fill="#8b5cf6" stroke="#7c3aed"/>' },
+        { type: 'comment', label: 'Comment', svg: '<rect x="3" y="5" width="30" height="18" rx="4" fill="#f8fafc" stroke="#94a3b8"/><path d="M8,23 L14,19 L8,19 Z" fill="#f8fafc" stroke="#94a3b8"/>' },
         { type: 'manualInput', label: 'Manual Input', svg: '<polygon points="7,4 33,4 30,24 3,24" fill="#06b6d4" stroke="#0891b2"/>' },
         { type: 'delay', label: 'Delay', svg: '<path d="M3,4 L25,4 A10,10 0 0,1 25,24 L3,24 Z" fill="#f97316" stroke="#ea580c"/>' },
         { type: 'connector', label: 'Connector', svg: '<circle cx="18" cy="14" r="10" fill="#64748b" stroke="#475569"/>' },
@@ -109,13 +110,16 @@
         _refreshLaneList() {
             const container = document.getElementById('lane-list');
             container.innerHTML = '';
-            const lanes = state().getLanes();
-            this._renderLaneItems(container, lanes, 'row');
+            const lanes = state().getLanes() || [];
+            const sortedLanes = [...lanes].sort((a, b) => (a.order || 0) - (b.order || 0));
+            this._renderLaneItems(container, sortedLanes, 'row');
 
             const columnContainer = document.getElementById('lane-column-list');
             if (columnContainer) {
                 columnContainer.innerHTML = '';
-                this._renderLaneItems(columnContainer, state().getLaneColumns ? state().getLaneColumns() : [], 'column');
+                const cols = state().getLaneColumns ? state().getLaneColumns() : [];
+                const sortedCols = [...cols].sort((a, b) => (a.order || 0) - (b.order || 0));
+                this._renderLaneItems(columnContainer, sortedCols, 'column');
             }
 
             // Update swimlane dropdown in properties
@@ -123,8 +127,8 @@
             if (propSelect) {
                 propSelect.innerHTML = '<option value="">(None)</option>';
                 lanes.forEach(l => {
-                    propSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`;
-                });
+                        propSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`;
+                    });
             }
 
             const propColumnSelect = document.getElementById('prop-swimlane-column');
@@ -138,17 +142,27 @@
         },
 
         _renderLaneItems(container, lanes, kind) {
-            lanes.forEach(lane => {
+            lanes.forEach((lane, idx) => {
                 const item = document.createElement('div');
                 item.className = 'lane-item';
                 item.innerHTML = `
                     <span class="lane-item-color" style="background:${lane.backgroundColor || 'transparent'}; border: 1.5px solid ${lane.borderColor || 'var(--border)'}"></span>
                     <span class="lane-item-name">${lane.name}</span>
                     <div class="lane-item-actions">
+                        <button class="lane-item-btn" data-action="up" title="Move Up">↑</button>
+                        <button class="lane-item-btn" data-action="down" title="Move Down">↓</button>
                         <button class="lane-item-btn" data-action="edit" title="Edit">✎</button>
                         <button class="lane-item-btn danger" data-action="delete" title="Delete">✕</button>
                     </div>
                 `;
+
+                item.querySelector('[data-action="up"]').addEventListener('click', () => {
+                    this._moveLane(lane.id, -1, kind);
+                });
+                item.querySelector('[data-action="down"]').addEventListener('click', () => {
+                    this._moveLane(lane.id, 1, kind);
+                });
+
                 item.querySelector('[data-action="edit"]').addEventListener('click', () => {
                     this.showLaneModal(lane, kind);
                 });
@@ -161,6 +175,38 @@
                 });
                 container.appendChild(item);
             });
+        },
+
+        _moveLane(laneId, direction, kind) {
+            // direction: -1 up, +1 down
+            const lanes = kind === 'column' ? (state().getLaneColumns ? state().getLaneColumns() : []) : state().getLanes();
+            const sorted = [...(lanes || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const idx = sorted.findIndex(l => l.id === laneId);
+            if (idx === -1) return;
+            const newIdx = idx + direction;
+            if (newIdx < 0 || newIdx >= sorted.length) return;
+
+            // Swap order values
+            const a = sorted[idx];
+            const b = sorted[newIdx];
+            const aOrder = a.order || 0;
+            const bOrder = b.order || 0;
+
+            // Swap order values via StateManager
+            if (kind === 'column') {
+                if (state().updateLaneColumn) {
+                    state().updateLaneColumn(a.id, { order: bOrder });
+                    state().updateLaneColumn(b.id, { order: aOrder });
+                } else {
+                    // fallback: directly set values and emit change
+                    a.order = bOrder;
+                    b.order = aOrder;
+                    state().setState(state().getState());
+                }
+            } else {
+                state().updateLane(a.id, { order: bOrder });
+                state().updateLane(b.id, { order: aOrder });
+            }
         },
 
         _setupLayoutControls() {
@@ -236,6 +282,10 @@
                     <div style="display:flex; flex-direction:column; gap:6px;">
                         <label style="font-size:12px; font-weight:600; color:var(--text-primary)">${laneKindLabel} Name</label>
                         <input type="text" id="lane-modal-name" class="prop-input" value="${nameVal}" style="width:100%; font-size:13px; padding:6px 10px;" required />
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <label style="font-size:12px; font-weight:600; color:var(--text-primary); width:120px;">Order (position)</label>
+                        <input type="number" id="lane-modal-order" class="prop-input" value="${laneToEdit ? (laneToEdit.order ?? 0) : (kind === 'column' ? (state().getLaneColumns ? state().getLaneColumns().length : 0) : state().getLanes().length)}" min="0" style="width:100px;" />
                     </div>
                     
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
@@ -323,14 +373,23 @@
                 const finalBBg = isBBgDefault ? '' : bBgInput.value;
                 const finalBorder = isBorderDefault ? '' : borderInput.value;
                 const finalFont = isFontDefault ? '' : fontInput.value;
+                const orderVal = parseInt(document.getElementById('lane-modal-order').value, 10) || 0;
 
                 if (laneToEdit) {
-                    laneToEdit.name = name;
-                    laneToEdit.headerBackgroundColor = finalHBg;
-                    laneToEdit.backgroundColor = finalBBg;
-                    laneToEdit.borderColor = finalBorder;
-                    laneToEdit.fontColor = finalFont;
-                    state().setState(state().getState());
+                    const updates = {
+                        name,
+                        headerBackgroundColor: finalHBg,
+                        backgroundColor: finalBBg,
+                        borderColor: finalBorder,
+                        fontColor: finalFont,
+                        order: orderVal
+                    };
+                    if (kind === 'column') {
+                        if (state().updateLaneColumn) state().updateLaneColumn(laneToEdit.id, updates);
+                        else { Object.assign(laneToEdit, updates); state().setState(state().getState()); }
+                    } else {
+                        state().updateLane(laneToEdit.id, updates);
+                    }
                     bus().emit('toast', 'success', 'Swimlane updated');
                 } else {
                     const newLane = model().createLane({
@@ -339,9 +398,7 @@
                         backgroundColor: finalBBg,
                         borderColor: finalBorder,
                         fontColor: finalFont,
-                        order: kind === 'column'
-                            ? (state().getLaneColumns ? state().getLaneColumns().length : 0)
-                            : state().getLanes().length
+                        order: orderVal
                     });
                     if (kind === 'column') {
                         state().addLaneColumn(newLane);

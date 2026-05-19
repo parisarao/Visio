@@ -165,6 +165,19 @@
                 edges: []
             }
         }
+        ,
+        'comment-sample': {
+            name: 'Comment Example',
+            data: {
+                version: '1.0',
+                settings: { theme: 'light', connectorStyle: 'orthogonal', gridSnap: true, gridSize: 20, laneOrientation: 'horizontal' },
+                lanes: [ { id: 'lane-none', name: 'Notes', backgroundColor: '', borderColor: '', fontColor: '', order: 0 } ],
+                nodes: [
+                    { stepId: 'C1', stepName: 'PO provisions do not get reflected in OneSCM\nas revised PO is not sent to the supplier', shapeType: 'comment', swimlane: 'lane-none', nextStep: '', yesPath: '', noPath: '', backgroundColor: '#fff7ed', fontColor: '#000000', borderColor: '#d1d5db', connectionLineColor: '#64748b', connectionLabel: '', width: 300, height: 40, icon: '', notes: '' }
+                ],
+                edges: []
+            }
+        }
     };
 
     // Normalize all templates to have transparent backgrounds, black fonts, and black borders by default

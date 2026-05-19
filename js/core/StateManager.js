@@ -219,6 +219,31 @@
             this._updateUndoRedoButtons();
         }
 
+        updateLane(laneId, updates) {
+            this._pushHistory();
+            const lane = this._state.lanes.find(l => l.id === laneId);
+            if (lane) {
+                Object.assign(lane, updates);
+            }
+            this._dirty = true;
+            bus().emit('state:changed', this._state);
+            bus().emit('lane:updated', laneId, updates);
+            this._updateUndoRedoButtons();
+        }
+
+        updateLaneColumn(columnId, updates) {
+            this._pushHistory();
+            if (!this._state.laneColumns) this._state.laneColumns = [];
+            const col = this._state.laneColumns.find(c => c.id === columnId);
+            if (col) {
+                Object.assign(col, updates);
+            }
+            this._dirty = true;
+            bus().emit('state:changed', this._state);
+            bus().emit('lane-column:updated', columnId, updates);
+            this._updateUndoRedoButtons();
+        }
+
         addLaneColumn(column) {
             this._pushHistory();
             if (!this._state.laneColumns) this._state.laneColumns = [];
