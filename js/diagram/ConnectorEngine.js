@@ -48,20 +48,29 @@
             g.setAttribute('data-points', JSON.stringify(points));
 
             // Determine marker and color
-            let markerEnd = 'url(#arrowhead)';
+            const isAnnotation = (sourceNode && sourceNode.shapeType === 'annotation') || 
+                                 (targetNode && targetNode.shapeType === 'annotation');
+
+            let markerEnd = isAnnotation ? 'none' : 'url(#arrowhead)';
             let color = edge.color || '#64748b';
             if (edge.type === 'yes') { markerEnd = 'url(#arrowhead-yes)'; color = '#22c55e'; }
             else if (edge.type === 'no') { markerEnd = 'url(#arrowhead-no)'; color = '#ef4444'; }
 
-            const path = el('path', {
+            const pathAttrs = {
                 d: pathD,
                 class: 'connector-path',
                 fill: 'none',
                 stroke: color,
-                'stroke-width': '1.8',
+                'stroke-width': isAnnotation ? '1.5' : '1.8',
                 'marker-end': markerEnd,
                 'data-edge-id': edge.id
-            });
+            };
+
+            if (isAnnotation) {
+                pathAttrs['stroke-dasharray'] = '4,4';
+            }
+
+            const path = el('path', pathAttrs);
             g.appendChild(path);
 
             // Label
