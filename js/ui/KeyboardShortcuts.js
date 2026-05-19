@@ -24,8 +24,22 @@
 
                 if (ctrl && e.key === 'z') { e.preventDefault(); state().undo(); }
                 else if (ctrl && e.key === 'y') { e.preventDefault(); state().redo(); }
-                else if (ctrl && e.key === 's') { e.preventDefault(); storage().saveToFile(); }
-                else if (ctrl && e.key === 'o') { e.preventDefault(); storage().openFile(); }
+                else if (ctrl && e.key === 's') { 
+                    e.preventDefault(); 
+                    if (window.PMB.ExcelRepositoryManager) {
+                        window.PMB.ExcelRepositoryManager.saveActiveStateToWorkbook();
+                    } else {
+                        storage().saveToFile();
+                    }
+                }
+                else if (ctrl && e.key === 'o') { 
+                    e.preventDefault(); 
+                    if (window.PMB.ExcelRepositoryManager) {
+                        window.PMB.ExcelRepositoryManager.handleOpenRepositoryFile();
+                    } else {
+                        storage().openFile();
+                    }
+                }
                 else if (arrowDeltas[e.key]) {
                     const selectedIds = window.PMB.SelectionManager
                         ? window.PMB.SelectionManager.getSelected()

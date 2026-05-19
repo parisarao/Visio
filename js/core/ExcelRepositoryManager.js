@@ -13,6 +13,75 @@
     const SHEET_COLUMNS = 'Columns';
     const SHEET_SETTINGS = 'DiagramSettings';
 
+    // Simple IDB Wrapper for File Handles
+    const idbKeyval = {
+        dbName: 'PMB_ExcelRepository_DB',
+        storeName: 'file_handles',
+        db: null,
+        
+        getDB() {
+            if (this.db) return Promise.resolve(this.db);
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    db.createObjectStore(this.storeName);
+                };
+                request.onsuccess = (e) => {
+                    this.db = e.target.result;
+                    resolve(this.db);
+                };
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
+        
+        async get(key) {
+            try {
+                const db = await this.getDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(this.storeName, 'readonly');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (err) {
+                console.warn('[idbKeyval] Get failed:', err);
+                return null;
+            }
+        },
+        
+        async set(key, val) {
+            try {
+                const db = await this.getDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(this.storeName, 'readwrite');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.put(val, key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (err) {
+                console.warn('[idbKeyval] Set failed:', err);
+            }
+        },
+
+        async delete(key) {
+            try {
+                const db = await this.getDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(this.storeName, 'readwrite');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.delete(key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (err) {
+                console.warn('[idbKeyval] Delete failed:', err);
+            }
+        }
+    };
+
     class ExcelRepositoryManager {
         constructor() {
             this._workbook = null;
@@ -25,10 +94,10 @@
             this._colsData = [];
             this._settingsData = [];
 
-            // Tracking active hierarchy
-            this.activeAccount = '';
-            this.activeProcess = '';
-            this.activeActivity = '';
+            // Tracking active hierarchy with localStorage memory fallback
+            this.activeAccount = localStorage.getItem('pmb_active_account') || '';
+            this.activeProcess = localStorage.getItem('pmb_active_process') || '';
+            this.activeActivity = localStorage.getItem('pmb_active_activity') || '';
         }
 
         init() {
@@ -39,14 +108,179 @@
 
             // Set up event listener to capture active diagram updates when saved
             bus().on('save:requested', () => {
-                if (this.isRepositoryActive()) {
-                    this.saveActiveStateToWorkbook();
-                }
+                this.saveActiveStateToWorkbook();
             });
+
+            // Inject explorer custom styles once
+            if (!document.getElementById('explorer-styles')) {
+                const style = document.createElement('style');
+                style.id = 'explorer-styles';
+                style.textContent = `
+                    .explorer-activity-item {
+                        transition: all 0.2s ease;
+                    }
+                    .explorer-activity-item:hover {
+                        background: rgba(16, 124, 65, 0.08) !important;
+                        color: #107c41 !important;
+                    }
+                    .explorer-account-header:hover {
+                        background: rgba(16, 124, 65, 0.08) !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Check auto relink on startup
+            this._checkAutoRelink();
         }
 
         isRepositoryActive() {
             return this._workbook !== null && this.activeAccount && this.activeProcess && this.activeActivity;
+        }
+
+        async _checkAutoRelink() {
+            try {
+                const handle = await idbKeyval.get('pmb_excel_file_handle');
+                if (!handle) {
+                    console.log('[ExcelRepositoryManager] No persistent Excel handle in IndexedDB.');
+                    localStorage.removeItem('pmb_has_file_handle');
+                    return;
+                }
+                localStorage.setItem('pmb_has_file_handle', 'true');
+                console.log('[ExcelRepositoryManager] Found persistent handle:', handle.name);
+                this._showRelinkBanner(handle);
+            } catch (err) {
+                console.warn('[ExcelRepositoryManager] Auto-relink check failed:', err);
+            }
+        }
+
+        _showRelinkBanner(handle) {
+            // Remove existing banner if present
+            const oldBanner = document.getElementById('relink-banner');
+            if (oldBanner) oldBanner.remove();
+
+            const banner = document.createElement('div');
+            banner.id = 'relink-banner';
+            banner.style.cssText = `
+                position: fixed;
+                top: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #107c41;
+                color: white;
+                padding: 10px 16px;
+                border-radius: var(--radius, 8px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-family: system-ui, -apple-system, sans-serif;
+                font-weight: 500;
+                font-size: 13px;
+                animation: slideDown 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            `;
+
+            // Dynamic keyframes for sliding animation
+            if (!document.getElementById('relink-banner-style')) {
+                const style = document.createElement('style');
+                style.id = 'relink-banner-style';
+                style.textContent = `
+                    @keyframes slideDown {
+                        from { transform: translate(-50%, -40px); opacity: 0; }
+                        to { transform: translate(-50%, 0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            banner.innerHTML = `
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M16.2 2H7.8C6.8 2 6 2.8 6 3.8v16.4c0 1 .8 1.8 1.8 1.8h8.4c1 0 1.8-.8 1.8-1.8V3.8c0-1-.8-1.8-1.8-1.8zm-1.7 13.5l-1.3-2 1.3-2c.1-.2.2-.4.2-.6 0-.4-.3-.7-.7-.7h-1.2c-.2 0-.4.1-.5.3l-.9 1.4-.9-1.4c-.1-.2-.3-.3-.5-.3H9c-.4 0-.7.3-.7.7 0 .2.1.4.2.6l1.3 2-1.3 2c-.1.2-.2.4-.2.6 0 .4.3.7.7.7h1.2c.2 0 .4-.1.5-.3l.9-1.4.9 1.4c.1.2.3.3.5.3h1.2c.4 0 .7-.3.7-.7 0-.2-.1-.4-.2-.6z"/></svg>
+                <span>Linked to Excel database: <strong>${handle.name}</strong></span>
+                <button id="btn-relink-accept" style="background: white; color: #107c41; border: 1px solid white; padding: 4px 10px; font-weight: 600; font-size: 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-left: 4px;">Reconnect</button>
+                <button id="btn-relink-ignore" style="background: transparent; color: rgba(255,255,255,0.7); border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; font-weight: bold;">&times;</button>
+            `;
+
+            document.body.appendChild(banner);
+
+            const btnAccept = document.getElementById('btn-relink-accept');
+            const btnIgnore = document.getElementById('btn-relink-ignore');
+
+            btnAccept.addEventListener('click', async () => {
+                btnAccept.disabled = true;
+                btnAccept.textContent = 'Linking...';
+                try {
+                    const options = { mode: 'readwrite' };
+                    // Query / request permission
+                    if ((await handle.queryPermission(options)) !== 'granted') {
+                        if ((await handle.requestPermission(options)) !== 'granted') {
+                            throw new Error('Permission to access Excel file was denied.');
+                        }
+                    }
+
+                    this._fileHandle = handle;
+                    this._fileName = handle.name;
+
+                    const file = await handle.getFile();
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const wb = XLSX.read(data, { type: 'array' });
+                            this.parseWorkbook(wb);
+                            
+                            // Restore active selections if available
+                            const acc = localStorage.getItem('pmb_active_account');
+                            const proc = localStorage.getItem('pmb_active_process');
+                            const act = localStorage.getItem('pmb_active_activity');
+
+                            if (acc && proc && act) {
+                                const selectAccount = document.getElementById('repo-select-account');
+                                const selectProcess = document.getElementById('repo-select-process');
+                                const selectActivity = document.getElementById('repo-select-activity');
+
+                                if (selectAccount) selectAccount.value = acc;
+                                this.activeAccount = acc;
+                                this.updateProcessDropdown();
+
+                                if (selectProcess) selectProcess.value = proc;
+                                this.activeProcess = proc;
+                                this.updateActivityDropdown();
+
+                                if (selectActivity) {
+                                    // Ensure the activity option exists
+                                    const hasOpt = Array.from(selectActivity.options).some(o => o.value === act);
+                                    if (hasOpt) {
+                                        selectActivity.value = act;
+                                        this.activeActivity = act;
+                                        this.loadDiagramFromWorkbook(acc, proc, act);
+                                    }
+                                }
+                            }
+                            
+                            bus().emit('toast', 'success', `Auto-linked repository: ${this._fileName}`);
+                            banner.remove();
+                        } catch (err) {
+                            console.error('[ExcelRepositoryManager] Parsing Excel failed:', err);
+                            bus().emit('toast', 'error', 'Failed to read auto-linked Excel format.');
+                            btnAccept.disabled = false;
+                            btnAccept.textContent = 'Reconnect';
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+
+                } catch (err) {
+                    console.error('[ExcelRepositoryManager] Relink error:', err);
+                    bus().emit('toast', 'error', err.message || 'Auto-relink connection failed.');
+                    btnAccept.disabled = false;
+                    btnAccept.textContent = 'Reconnect';
+                }
+            });
+
+            btnIgnore.addEventListener('click', () => {
+                banner.remove();
+            });
         }
 
         _bindUI() {
@@ -82,13 +316,17 @@
                 btnTemplate.addEventListener('click', () => this.downloadBlankTemplate());
             }
 
-            // Cascading Dropdown Listeners
+            // Cascading Dropdown Listeners with localStorage preservation
             if (selectAccount) {
                 selectAccount.addEventListener('change', (e) => {
                     this.activeAccount = e.target.value;
                     this.activeProcess = '';
                     this.activeActivity = '';
+                    localStorage.setItem('pmb_active_account', this.activeAccount);
+                    localStorage.setItem('pmb_active_process', '');
+                    localStorage.setItem('pmb_active_activity', '');
                     this.updateProcessDropdown();
+                    this.renderProcessExplorer();
                 });
             }
 
@@ -96,16 +334,21 @@
                 selectProcess.addEventListener('change', (e) => {
                     this.activeProcess = e.target.value;
                     this.activeActivity = '';
+                    localStorage.setItem('pmb_active_process', this.activeProcess);
+                    localStorage.setItem('pmb_active_activity', '');
                     this.updateActivityDropdown();
+                    this.renderProcessExplorer();
                 });
             }
 
             if (selectActivity) {
                 selectActivity.addEventListener('change', (e) => {
                     this.activeActivity = e.target.value;
+                    localStorage.setItem('pmb_active_activity', this.activeActivity);
                     if (this.activeActivity) {
                         this.loadDiagramFromWorkbook(this.activeAccount, this.activeProcess, this.activeActivity);
                     }
+                    this.renderProcessExplorer();
                 });
             }
         }
@@ -146,6 +389,13 @@
 
                 this._fileHandle = handle;
                 this._fileName = file.name;
+
+                // Save handle persistently in IndexedDB if native picker succeeded
+                if (handle) {
+                    await idbKeyval.set('pmb_excel_file_handle', handle);
+                    localStorage.setItem('pmb_has_file_handle', 'true');
+                    console.log('[ExcelRepositoryManager] File handle saved persistently to IndexedDB.');
+                }
 
                 // Read binary XLSX via SheetJS
                 const reader = new FileReader();
@@ -219,6 +469,7 @@
             if (btnCreate) btnCreate.disabled = false;
 
             this.populateAccountDropdown();
+            this.renderProcessExplorer();
         }
 
         populateAccountDropdown() {
@@ -295,6 +546,159 @@
 
             const btnSave = document.getElementById('btn-repo-save');
             if (btnSave) btnSave.disabled = true;
+        }
+
+        renderProcessExplorer() {
+            const container = document.getElementById('process-explorer-tree');
+            const countBadge = document.getElementById('process-explorer-count');
+            if (!container) return;
+
+            if (!this._workbook || this._stepsData.length === 0) {
+                container.innerHTML = `
+                    <div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 6px;">
+                        Connect an Excel Repository to browse available process maps.
+                    </div>
+                `;
+                if (countBadge) countBadge.textContent = '0 Maps';
+                return;
+            }
+
+            // Build hierarchical tree
+            const tree = {};
+            let totalActivities = 0;
+
+            this._stepsData.forEach(row => {
+                const acc = (row.Account || row.account || 'Unassigned Account').trim();
+                const proc = (row.Process || row.process || 'Unassigned Process').trim();
+                const act = (row.Activity || row.activity || 'Unassigned Activity').trim();
+
+                if (!acc || !proc || !act) return;
+
+                if (!tree[acc]) tree[acc] = {};
+                if (!tree[acc][proc]) tree[acc][proc] = new Set();
+                
+                if (!tree[acc][proc].has(act)) {
+                    tree[acc][proc].add(act);
+                    totalActivities++;
+                }
+            });
+
+            if (countBadge) {
+                countBadge.textContent = `${totalActivities} Map${totalActivities === 1 ? '' : 's'}`;
+            }
+
+            container.innerHTML = '';
+            
+            // Render hierarchical structure
+            Object.keys(tree).sort().forEach(acc => {
+                const accDetails = document.createElement('details');
+                accDetails.open = (acc === this.activeAccount);
+                accDetails.style.cssText = 'margin-bottom: 6px; border-bottom: 1px solid var(--border-light); padding-bottom: 4px;';
+
+                const accSummary = document.createElement('summary');
+                accSummary.className = 'explorer-account-header';
+                accSummary.style.cssText = 'font-weight: 600; font-size: 12px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; list-style: none;';
+                accSummary.innerHTML = `
+                    <span style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s; transform: ${acc === this.activeAccount ? 'rotate(90deg)' : ''}">▶</span>
+                    <svg width="14" height="14" fill="#d97706" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;" title="${acc}">${acc}</span>
+                `;
+
+                // Handle custom arrow rotation on details toggle
+                accDetails.addEventListener('toggle', () => {
+                    const arrow = accSummary.querySelector('span');
+                    if (arrow) arrow.style.transform = accDetails.open ? 'rotate(90deg)' : '';
+                });
+                
+                accDetails.appendChild(accSummary);
+
+                const procContainer = document.createElement('div');
+                procContainer.style.cssText = 'padding-left: 12px; margin-top: 4px; display: flex; flex-direction: column; gap: 4px;';
+
+                Object.keys(tree[acc]).sort().forEach(proc => {
+                    const procDetails = document.createElement('details');
+                    const isProcOpen = (acc === this.activeAccount && proc === this.activeProcess);
+                    procDetails.open = isProcOpen;
+                    procDetails.style.cssText = 'margin-bottom: 4px;';
+
+                    const procSummary = document.createElement('summary');
+                    procSummary.style.cssText = 'font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; list-style: none;';
+                    procSummary.innerHTML = `
+                        <span style="font-size: 8px; color: var(--text-muted); transition: transform 0.2s; transform: ${isProcOpen ? 'rotate(90deg)' : ''}">▶</span>
+                        <svg width="12" height="12" fill="#3b82f6" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" title="${proc}">${proc}</span>
+                    `;
+
+                    procDetails.addEventListener('toggle', () => {
+                        const arrow = procSummary.querySelector('span');
+                        if (arrow) arrow.style.transform = procDetails.open ? 'rotate(90deg)' : '';
+                    });
+
+                    procDetails.appendChild(procSummary);
+
+                    const actContainer = document.createElement('div');
+                    actContainer.style.cssText = 'padding-left: 14px; margin-top: 2px; display: flex; flex-direction: column; gap: 2px;';
+
+                    Array.from(tree[acc][proc]).sort().forEach(act => {
+                        const actBtn = document.createElement('button');
+                        const isActive = (acc === this.activeAccount && proc === this.activeProcess && act === this.activeActivity);
+                        
+                        actBtn.className = 'explorer-activity-item';
+                        actBtn.style.cssText = `
+                            border: none;
+                            text-align: left;
+                            font-size: 11px;
+                            padding: 4px 6px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            width: 100%;
+                            background: ${isActive ? 'rgba(16, 124, 65, 0.12)' : 'transparent'};
+                            color: ${isActive ? '#107c41' : 'var(--text)'};
+                            font-weight: ${isActive ? '600' : 'normal'};
+                        `;
+                        
+                        actBtn.innerHTML = `
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink:0; opacity: 0.8;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${act}">${act}</span>
+                        `;
+
+                        actBtn.addEventListener('click', () => {
+                            // Update cascading drop-down selectors
+                            const selectAccount = document.getElementById('repo-select-account');
+                            const selectProcess = document.getElementById('repo-select-process');
+                            const selectActivity = document.getElementById('repo-select-activity');
+
+                            if (selectAccount) selectAccount.value = acc;
+                            this.activeAccount = acc;
+                            localStorage.setItem('pmb_active_account', acc);
+                            
+                            this.updateProcessDropdown();
+                            if (selectProcess) selectProcess.value = proc;
+                            this.activeProcess = proc;
+                            localStorage.setItem('pmb_active_process', proc);
+
+                            this.updateActivityDropdown();
+                            if (selectActivity) selectActivity.value = act;
+                            this.activeActivity = act;
+                            localStorage.setItem('pmb_active_activity', act);
+
+                            this.loadDiagramFromWorkbook(acc, proc, act);
+                            this.renderProcessExplorer();
+                        });
+
+                        actContainer.appendChild(actBtn);
+                    });
+
+                    procDetails.appendChild(actContainer);
+                    procContainer.appendChild(procDetails);
+                });
+
+                accDetails.appendChild(procContainer);
+                container.appendChild(accDetails);
+            });
         }
 
         // ==========================================
@@ -442,7 +846,25 @@
         //        SAVING ACTIVE STATE BACK TO WORKBOOK
         // ==========================================
         async saveActiveStateToWorkbook() {
-            if (!this.isRepositoryActive()) return;
+            // Force save to Excel database: if not connected, configure active variables to seed PM_db.xlsx!
+            if (!this._workbook || !this.activeAccount || !this.activeProcess || !this.activeActivity) {
+                bus().emit('toast', 'info', 'No active repository connection. Creating PM_db.xlsx...');
+                
+                // Initialize default database keys
+                if (!this.activeAccount) this.activeAccount = 'Default Account';
+                if (!this.activeProcess) this.activeProcess = 'Default Process';
+                if (!this.activeActivity) this.activeActivity = state().getState().title || 'Default Activity';
+
+                localStorage.setItem('pmb_active_account', this.activeAccount);
+                localStorage.setItem('pmb_active_process', this.activeProcess);
+                localStorage.setItem('pmb_active_activity', this.activeActivity);
+
+                // Initialize standard arrays
+                this._stepsData = this._stepsData || [];
+                this._lanesData = this._lanesData || [];
+                this._colsData = this._colsData || [];
+                this._settingsData = this._settingsData || [];
+            }
 
             const acc = this.activeAccount;
             const proc = this.activeProcess;
@@ -574,14 +996,46 @@
             const saved = await this._writeWorkbookToDisk(wbout);
             if (saved) {
                 state().markClean();
-                bus().emit('toast', 'success', `Successfully saved repository workbook: ${this._fileName || 'Process_Maps_Repository.xlsx'}`);
+                bus().emit('toast', 'success', `Successfully saved repository workbook: ${this._fileName || 'PM_db.xlsx'}`);
+                
+                // Re-render Explorer Tree after successful save!
+                this.renderProcessExplorer();
             }
         }
 
         async _writeWorkbookToDisk(arrayBuffer) {
-            const handle = this._fileHandle;
+            let handle = this._fileHandle;
             
-            if (handle && window.showSaveFilePicker) {
+            if (!handle && window.showSaveFilePicker) {
+                try {
+                    // Force native Save File Picker suggesting PM_db.xlsx
+                    const pickerHandle = await window.showSaveFilePicker({
+                        suggestedName: 'PM_db.xlsx',
+                        types: [{
+                            description: 'Excel Workbooks',
+                            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+                        }],
+                        excludeAcceptAllOption: true
+                    });
+                    
+                    this._fileHandle = pickerHandle;
+                    this._fileName = pickerHandle.name;
+                    handle = pickerHandle;
+
+                    // Cache handle persistently in IndexedDB
+                    await idbKeyval.set('pmb_excel_file_handle', pickerHandle);
+                    localStorage.setItem('pmb_has_file_handle', 'true');
+                    console.log('[ExcelRepositoryManager] File handle saved persistently to IndexedDB.');
+                } catch (e) {
+                    if (e.name === 'AbortError') {
+                        bus().emit('toast', 'warning', 'Save operation cancelled.');
+                        return false;
+                    }
+                    console.error('[ExcelRepositoryManager] showSaveFilePicker failed:', e);
+                }
+            }
+
+            if (handle) {
                 try {
                     // Check file write permissions
                     const options = { mode: 'readwrite' };
@@ -604,7 +1058,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = this._fileName || 'Process_Maps_Repository.xlsx';
+            a.download = this._fileName || 'PM_db.xlsx';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

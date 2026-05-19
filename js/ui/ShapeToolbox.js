@@ -69,6 +69,7 @@
 
         _renderTemplates() {
             const container = document.getElementById('template-list');
+            if (!container) return;
             container.innerHTML = '';
             const templates = window.PMB.Templates || {};
             Object.entries(templates).forEach(([key, tmpl]) => {

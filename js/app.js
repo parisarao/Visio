@@ -56,9 +56,10 @@
         PMB.ContextMenu.init();
 
         // Try to restore auto-save
+        const hasExcelDb = localStorage.getItem('pmb_has_file_handle') === 'true' || localStorage.getItem('pmb_active_account');
         if (PMB.StorageManager.hasAutoSave()) {
             PMB.StorageManager.loadAutoSave();
-        } else {
+        } else if (!hasExcelDb) {
             // Load default template
             const defaultTemplate = PMB.Templates['it-support'];
             if (defaultTemplate) {

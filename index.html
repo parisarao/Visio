@@ -42,29 +42,6 @@
                 <span class="brand-text">ProcessMap<span class="brand-accent">Builder</span></span>
             </div>
             <div class="toolbar-divider"></div>
-            <!-- Excel Repository Controls -->
-            <div class="repo-controls-container" style="display:flex; align-items:center; gap:6px; background:rgba(16,124,65,0.06); border:1px dashed #107c41; padding:3px 6px; border-radius:var(--radius-sm); margin:0 4px; font-size:12px;">
-                <button id="btn-repo-load" class="toolbar-btn" style="background:#107c41; color:#fff; border-color:#107c41; display:flex; align-items:center; gap:4px; font-weight:600; padding:4px 8px; font-size:12px; border-radius:var(--radius-sm);" title="Load Excel Process Maps Repository">
-                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="margin-right:2px;"><path d="M16.2 2H7.8C6.8 2 6 2.8 6 3.8v16.4c0 1 .8 1.8 1.8 1.8h8.4c1 0 1.8-.8 1.8-1.8V3.8c0-1-.8-1.8-1.8-1.8zm-1.7 13.5l-1.3-2 1.3-2c.1-.2.2-.4.2-.6 0-.4-.3-.7-.7-.7h-1.2c-.2 0-.4.1-.5.3l-.9 1.4-.9-1.4c-.1-.2-.3-.3-.5-.3H9c-.4 0-.7.3-.7.7 0 .2.1.4.2.6l1.3 2-1.3 2c-.1.2-.2.4-.2.6 0 .4.3.7.7.7h1.2c.2 0 .4-.1.5-.3l.9-1.4.9 1.4c.1.2.3.3.5.3h1.2c.4 0 .7-.3.7-.7 0-.2-.1-.4-.2-.6z"/></svg>
-                    <span>Excel Repository</span>
-                </button>
-                <div id="repo-dropdowns" style="display:none; align-items:center; gap:6px;">
-                    <select id="repo-select-account" class="toolbar-select" style="max-width:120px; font-weight:500; font-size:12px; height:28px; padding:2px 4px; border-color:#107c41;" title="Select Account">
-                        <option value="">(Select Account)</option>
-                    </select>
-                    <select id="repo-select-process" class="toolbar-select" style="max-width:120px; font-weight:500; font-size:12px; height:28px; padding:2px 4px; border-color:#107c41;" title="Select Process" disabled>
-                        <option value="">(Select Process)</option>
-                    </select>
-                    <select id="repo-select-activity" class="toolbar-select" style="max-width:120px; font-weight:500; font-size:12px; height:28px; padding:2px 4px; border-color:#107c41;" title="Select Activity" disabled>
-                        <option value="">(Select Activity)</option>
-                    </select>
-                    <button id="btn-repo-create" class="toolbar-btn" style="padding:2px 6px; font-size:12px; font-weight:600; height:28px; border-radius:var(--radius-sm);" title="Create new process in Excel" disabled>+ New</button>
-                    <button id="btn-repo-save" class="toolbar-btn" style="background:#107c41; color:#fff; border-color:#107c41; padding:2px 8px; font-size:12px; font-weight:600; height:28px; border-radius:var(--radius-sm);" title="Save current changes back to Excel" disabled>Save</button>
-                </div>
-                <button id="btn-repo-seed" class="toolbar-btn" style="border:1px solid #107c41; color:#107c41; background:transparent; padding:2px 6px; font-size:12px; font-weight:500; height:28px; border-radius:var(--radius-sm);" title="Generate Starter Excel Repository from JSON files">Seed File</button>
-                <button id="btn-repo-template" class="toolbar-btn" style="border:1px solid #107c41; color:#107c41; background:transparent; padding:2px 6px; font-size:12px; font-weight:500; height:28px; border-radius:var(--radius-sm);" title="Download Blank Excel Repository template">Blank Template</button>
-            </div>
-            <div class="toolbar-divider"></div>
             <div style="display:flex; align-items:center; gap:4px;">
                 <input id="diagram-title-input" class="toolbar-title-input" type="text" value="Enterprise Process Map" title="Click to edit diagram title">
                 <button id="btn-diagram-settings" class="toolbar-btn" title="Diagram Settings & Defaults" style="padding:6px; border-radius:var(--radius-sm); display:none;">
@@ -148,15 +125,62 @@
                 <button id="btn-collapse-left" class="panel-collapse-btn" title="Collapse">◀</button>
             </div>
             <div class="panel-content">
+                <!-- Excel Repository Connection -->
+                <div class="panel-section repo-panel-section" style="border: 2px dashed #107c41; padding: 10px; border-radius: var(--radius); background: rgba(16,124,65,0.04); margin-bottom: 12px;">
+                    <div class="panel-section-title" style="color: #107c41; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 0; font-size: 11px;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M16.2 2H7.8C6.8 2 6 2.8 6 3.8v16.4c0 1 .8 1.8 1.8 1.8h8.4c1 0 1.8-.8 1.8-1.8V3.8c0-1-.8-1.8-1.8-1.8zm-1.7 13.5l-1.3-2 1.3-2c.1-.2.2-.4.2-.6 0-.4-.3-.7-.7-.7h-1.2c-.2 0-.4.1-.5.3l-.9 1.4-.9-1.4c-.1-.2-.3-.3-.5-.3H9c-.4 0-.7.3-.7.7 0 .2.1.4.2.6l1.3 2-1.3 2c-.1.2-.2.4-.2.6 0 .4.3.7.7.7h1.2c.2 0 .4-.1.5-.3l.9-1.4.9 1.4c.1.2.3.3.5.3h1.2c.4 0 .7-.3.7-.7 0-.2-.1-.4-.2-.6z"/></svg>
+                        <span>Excel Repository</span>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                        <button id="btn-repo-load" class="btn-primary" style="background: #107c41; border-color: #107c41; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; padding: 6px 12px; font-size: 12px; border-radius: var(--radius-sm);">
+                            <span>Connect Excel file</span>
+                        </button>
+                        
+                        <!-- Dropdowns stacked horizontally side-by-side inside the panel -->
+                        <div id="repo-dropdowns" style="display: none; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; gap: 6px;">
+                                <select id="repo-select-account" class="prop-select" style="flex: 1; border-color: #107c41; font-weight: 500; height: 32px; font-size: 12px; padding: 4px;" title="Select Account">
+                                    <option value="">(Select Account)</option>
+                                </select>
+                                <select id="repo-select-process" class="prop-select" style="flex: 1; border-color: #107c41; font-weight: 500; height: 32px; font-size: 12px; padding: 4px;" title="Select Process" disabled>
+                                    <option value="">(Select Process)</option>
+                                </select>
+                            </div>
+                            <select id="repo-select-activity" class="prop-select" style="width: 100%; border-color: #107c41; font-weight: 500; height: 32px; font-size: 12px; padding: 4px;" title="Select Activity" disabled>
+                                <option value="">(Select Activity)</option>
+                            </select>
+                            
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <button id="btn-repo-create" class="btn-secondary" style="flex: 1; height: 32px; font-weight: 600; font-size: 12px;" disabled>+ New</button>
+                                <button id="btn-repo-save" class="btn-primary" style="flex: 1; background: #107c41; border-color: #107c41; height: 32px; font-weight: 600; font-size: 12px;" disabled>Save</button>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 6px; margin-top: 4px;">
+                            <button id="btn-repo-seed" class="btn-secondary btn-sm" style="flex: 1; border-color: #107c41; color: #107c41; font-size: 11px; padding: 4px 6px;" title="Seed Repository">Seed File</button>
+                            <button id="btn-repo-template" class="btn-secondary btn-sm" style="flex: 1; border-color: #107c41; color: #107c41; font-size: 11px; padding: 4px 6px;" title="Blank Template">Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Map Explorer (Navigator) -->
+                <div class="panel-section" id="process-explorer-section" style="margin-bottom: 16px;">
+                    <div class="panel-section-title" style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-top: 0;">
+                        <span>Process Explorer</span>
+                        <span id="process-explorer-count" style="font-size: 10px; color: var(--text-muted); font-weight: 500;">0 Maps</span>
+                    </div>
+                    <div id="process-explorer-tree" class="process-explorer-tree" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px; background: var(--bg-secondary); display: flex; flex-direction: column; gap: 4px;">
+                        <div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 6px;">
+                            Connect an Excel Repository to browse available process maps.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Shape Palette -->
                 <div class="panel-section">
                     <div class="panel-section-title">Shapes</div>
                     <div id="shape-palette" class="shape-palette"></div>
-                </div>
-                <!-- Templates -->
-                <div class="panel-section">
-                    <div class="panel-section-title">Templates</div>
-                    <div id="template-list" class="template-list"></div>
                 </div>
                 <!-- Layout Settings -->
                 <div class="panel-section">
