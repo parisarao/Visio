@@ -533,6 +533,10 @@
             }
 
             switch (side) {
+                case 'top-left':     return { x: x, y: y };
+                case 'top-right':    return { x: x + w, y: y };
+                case 'bottom-left':  return { x: x, y: y + h };
+                case 'bottom-right': return { x: x + w, y: y + h };
                 case 'top':    return { x: x + w / 2, y: y };
                 case 'bottom': return { x: x + w / 2, y: y + h };
                 case 'left':   return { x: x,         y: y + h / 2 };

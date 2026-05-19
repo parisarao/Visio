@@ -20,13 +20,42 @@
             const g = el('g', { class: 'connector-group', 'data-edge-id': edge.id });
             const connStyle = style || 'orthogonal';
 
-            // Determine best port sides or use custom ones
+            // Determine best port sides or use custom ones: snap to closest corner if standard shape connects to an annotation
+            const isSrcAnno = sourceNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(sourceNode.shapeType);
+            const isTgtAnno = targetNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(targetNode.shapeType);
+
+            let sourcePort = edge.srcPort;
+            let targetPort = edge.tgtPort;
+
+            if (isSrcAnno && !isTgtAnno) {
+                if (!targetPort) {
+                    const srcCenter = { x: sourceNode.x + (sourceNode.width || 120)/2, y: sourceNode.y + (sourceNode.height || 50)/2 };
+                    targetPort = this._getClosestCorner(targetNode, srcCenter);
+                }
+                if (!sourcePort) {
+                    sourcePort = this._bestPorts(sourceNode, targetNode).source;
+                }
+            } else if (isTgtAnno && !isSrcAnno) {
+                if (!sourcePort) {
+                    const tgtCenter = { x: targetNode.x + (targetNode.width || 120)/2, y: targetNode.y + (targetNode.height || 50)/2 };
+                    sourcePort = this._getClosestCorner(sourceNode, tgtCenter);
+                }
+                if (!targetPort) {
+                    targetPort = this._bestPorts(sourceNode, targetNode).target;
+                }
+            } else {
+                const best = this._bestPorts(sourceNode, targetNode);
+                if (!sourcePort) sourcePort = best.source;
+                if (!targetPort) targetPort = best.target;
+            }
+
+            const src = shapes().getPort(sourceNode, sourcePort);
+            const tgt = shapes().getPort(targetNode, targetPort);
+
             const ports = {
-                source: edge.srcPort || this._bestPorts(sourceNode, targetNode).source,
-                target: edge.tgtPort || this._bestPorts(sourceNode, targetNode).target
+                source: sourcePort,
+                target: targetPort
             };
-            const src = shapes().getPort(sourceNode, ports.source);
-            const tgt = shapes().getPort(targetNode, ports.target);
 
             const isAnnotation = (sourceNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(sourceNode.shapeType)) || 
                                  (targetNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(targetNode.shapeType));
@@ -121,6 +150,27 @@
                     ? { source: 'right', target: 'left' }
                     : { source: 'left', target: 'right' };
             }
+        },
+
+        _getClosestCorner(shapeNode, targetPoint) {
+            const sx = shapeNode.x || 0, sy = shapeNode.y || 0;
+            const sw = shapeNode.width || 140, sh = shapeNode.height || 60;
+            const corners = [
+                { name: 'top-left',     x: sx,      y: sy },
+                { name: 'top-right',    x: sx + sw, y: sy },
+                { name: 'bottom-left',  x: sx,      y: sy + sh },
+                { name: 'bottom-right', x: sx + sw, y: sy + sh }
+            ];
+            let closest = corners[0];
+            let minDist = Infinity;
+            corners.forEach(c => {
+                const dist = Math.hypot(c.x - targetPoint.x, c.y - targetPoint.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = c;
+                }
+            });
+            return closest.name;
         },
 
         _straightPath(src, tgt) {
