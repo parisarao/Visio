@@ -4,19 +4,23 @@
 (function () {
     'use strict';
 
-    const SHAPE_TYPES = ['start', 'end', 'process', 'decision', 'document', 'database', 'manualInput', 'delay', 'connector', 'subprocess'];
+    const SHAPE_TYPES = ['start', 'end', 'process', 'decision', 'document', 'database', 'manualInput', 'delay', 'connector', 'subprocess', 'annotation', 'doubleAnnotation', 'balloonCallout', 'braceAnnotation'];
 
     const SHAPE_DEFAULTS = {
-        start:       { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
-        end:         { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
-        process:     { bg: 'transparent', font: '#000000', border: '#000000', w: 150, h: 60 },
-        decision:    { bg: 'transparent', font: '#000000', border: '#000000', w: 130, h: 100 },
-        document:    { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 70 },
-        database:    { bg: 'transparent', font: '#000000', border: '#000000', w: 100, h: 80 },
-        manualInput: { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 60 },
-        delay:       { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 60 },
-        connector:   { bg: 'transparent', font: '#000000', border: '#000000', w: 50,  h: 50 },
-        subprocess:  { bg: 'transparent', font: '#000000', border: '#000000', w: 160, h: 70 }
+        start:            { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
+        end:              { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
+        process:          { bg: 'transparent', font: '#000000', border: '#000000', w: 150, h: 60 },
+        decision:         { bg: 'transparent', font: '#000000', border: '#000000', w: 130, h: 100 },
+        document:         { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 70 },
+        database:         { bg: 'transparent', font: '#000000', border: '#000000', w: 100, h: 80 },
+        manualInput:      { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 60 },
+        delay:            { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 60 },
+        connector:        { bg: 'transparent', font: '#000000', border: '#000000', w: 50,  h: 50 },
+        subprocess:       { bg: 'transparent', font: '#000000', border: '#000000', w: 160, h: 70 },
+        annotation:       { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
+        doubleAnnotation: { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 },
+        balloonCallout:   { bg: 'transparent', font: '#000000', border: '#000000', w: 140, h: 60 },
+        braceAnnotation:  { bg: 'transparent', font: '#000000', border: '#000000', w: 120, h: 50 }
     };
 
     class DataModel {

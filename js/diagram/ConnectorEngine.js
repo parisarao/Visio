@@ -48,8 +48,8 @@
             g.setAttribute('data-points', JSON.stringify(points));
 
             // Determine marker and color
-            const isAnnotation = (sourceNode && sourceNode.shapeType === 'annotation') || 
-                                 (targetNode && targetNode.shapeType === 'annotation');
+            const isAnnotation = (sourceNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(sourceNode.shapeType)) || 
+                                 (targetNode && ['annotation', 'doubleAnnotation', 'braceAnnotation', 'balloonCallout'].includes(targetNode.shapeType));
 
             let markerEnd = isAnnotation ? 'none' : 'url(#arrowhead)';
             let color = edge.color || '#64748b';

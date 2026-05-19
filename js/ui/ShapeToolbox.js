@@ -30,7 +30,10 @@
         { type: 'display', label: 'Display', svg: '<path d="M7,5 L28,5 A9,9 0 0,1 28,23 L7,23 L3,14 Z" fill="#eab308" stroke="#ca8a04"/>' },
         { type: 'manualOperation', label: 'Manual Operation', svg: '<polygon points="3,5 33,5 29,23 7,23" fill="#06b6d4" stroke="#0891b2"/>' },
         { type: 'preparation', label: 'Preparation', svg: '<polygon points="7,5 29,5 33,14 29,23 7,23 3,14" fill="#a855f7" stroke="#9333ea"/>' },
-        { type: 'annotation', label: 'Annotation', svg: '<path d="M12,5 L5,5 L5,23 L12,23" fill="none" stroke="#64748b" stroke-width="1.5"/><path d="M5,23 L1,27" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2,2"/>' }
+        { type: 'annotation', label: 'Annotation', svg: '<path d="M12,5 L5,5 L5,23 L12,23" fill="none" stroke="#64748b" stroke-width="1.5"/><path d="M5,23 L1,27" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2,2"/>' },
+        { type: 'doubleAnnotation', label: 'Double Annotation', svg: '<path d="M10,5 L4,5 L4,23 L10,23 M26,5 L32,5 L32,23 L26,23" fill="none" stroke="#64748b" stroke-width="1.5"/>' },
+        { type: 'balloonCallout', label: 'Balloon Callout', svg: '<path d="M5,5 L31,5 A2,2 0 0,1 33,7 L33,18 A2,2 0 0,1 31,20 L15,20 L8,25 L10,20 L5,20 A2,2 0 0,1 3,18 L3,7 A2,2 0 0,1 5,5 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>' },
+        { type: 'braceAnnotation', label: 'Brace Annotation', svg: '<path d="M12,4 Q5,4 5,9 Q5,14 1,14 Q5,14 5,19 Q5,24 12,24" fill="none" stroke="#64748b" stroke-width="1.8"/>' }
     ];
 
     const ShapeToolbox = {

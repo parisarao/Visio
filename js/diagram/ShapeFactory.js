@@ -159,9 +159,13 @@
                 maxTextWidth = w * 0.72;
             } else if (type === 'preparation') {
                 maxTextWidth = w * 0.72;
-            } else if (type === 'annotation') {
-                maxTextWidth = w - 26;
+            } else if (type === 'annotation' || type === 'doubleAnnotation' || type === 'braceAnnotation') {
+                maxTextWidth = w - 32;
                 startYOffset = 0;
+            } else if (type === 'balloonCallout') {
+                maxTextWidth = w - 20;
+                usableHeight = h - 16;
+                startYOffset = -4; // Nudge slightly up above the bottom pointer pointer
             }
 
             maxTextWidth = Math.max(20, maxTextWidth);
@@ -237,7 +241,10 @@
                 case 'display': return this._display(w, h, fill, stroke);
                 case 'manualOperation': return this._manualOperation(w, h, fill, stroke);
                 case 'preparation': return this._preparation(w, h, fill, stroke);
-                case 'annotation': return this._annotation(w, h, fill, stroke);
+                case 'annotation': return this._annotation(w, h, fill, stroke, node);
+                case 'doubleAnnotation': return this._doubleAnnotation(w, h, fill, stroke, node);
+                case 'balloonCallout': return this._balloonCallout(w, h, fill, stroke, node);
+                case 'braceAnnotation': return this._braceAnnotation(w, h, fill, stroke, node);
                 default: return this._rect(w, h, fill, stroke, 6);
             }
         },
@@ -419,22 +426,59 @@
             return el('polygon', { points, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
         },
 
-        _annotation(w, h, fill, stroke) {
+        _annotation(w, h, fill, stroke, node) {
             const g = el('g');
             // Open bracket on the left: M15,2 L3,2 L3,h-2 L15,h-2
             const bracketD = `M15,2 L3,2 L3,${h - 2} L15,${h - 2}`;
             const bracket = el('path', { d: bracketD, fill: 'none', stroke, 'stroke-width': '1.5', 'pointer-events': 'all' });
             g.appendChild(bracket);
             
-            // Slanted pointer line extending from bottom-left corner of the bracket
-            const lineD = `M3,${h - 2} L-15,${h + 15}`;
-            const pointer = el('path', { d: lineD, fill: 'none', stroke, 'stroke-width': '1.5', 'stroke-dasharray': '3,3', 'pointer-events': 'none' });
-            g.appendChild(pointer);
+            // Render the static pointer line only when NOT connected to another shape
+            const hasConnection = node && (node.nextStep || '');
+            if (!hasConnection) {
+                const lineD = `M3,${h - 2} L-15,${h + 15}`;
+                const pointer = el('path', { d: lineD, fill: 'none', stroke, 'stroke-width': '1.5', 'stroke-dasharray': '3,3', 'pointer-events': 'none' });
+                g.appendChild(pointer);
+            }
             
             // Invisible background rect for easy selection/hovering on canvas
             const bg = el('rect', { x: 0, y: 0, width: w, height: h, fill: 'transparent', stroke: 'none', 'pointer-events': 'all' });
             g.insertBefore(bg, bracket);
             
+            return g;
+        },
+
+        _doubleAnnotation(w, h, fill, stroke, node) {
+            const g = el('g');
+            const leftD = `M15,2 L3,2 L3,${h - 2} L15,${h - 2}`;
+            const rightD = `M${w - 15},2 L${w - 3},2 L${w - 3},${h - 2} L${w - 15},${h - 2}`;
+            g.appendChild(el('path', { d: leftD, fill: 'none', stroke, 'stroke-width': '1.5', 'pointer-events': 'all' }));
+            g.appendChild(el('path', { d: rightD, fill: 'none', stroke, 'stroke-width': '1.5', 'pointer-events': 'all' }));
+            
+            // Invisible background rect
+            const bg = el('rect', { x: 0, y: 0, width: w, height: h, fill: 'transparent', stroke: 'none', 'pointer-events': 'all' });
+            g.insertBefore(bg, g.firstChild);
+            
+            return g;
+        },
+
+        _balloonCallout(w, h, fill, stroke, node) {
+            const r = 6;
+            const pointerSize = 12;
+            const d = `M ${r},0 L ${w - r},0 A ${r},${r} 0 0,1 ${w},${r} L ${w},${h - pointerSize - r} A ${r},${r} 0 0,1 ${w - r},${h - pointerSize} L 30,${h - pointerSize} L 15,${h} L 18,${h - pointerSize} L ${r},${h - pointerSize} A ${r},${r} 0 0,1 0,${h - pointerSize - r} L 0,${r} A ${r},${r} 0 0,1 ${r},0 Z`;
+            return el('path', { d, fill, stroke, 'stroke-width': '1.5', filter: 'url(#drop-shadow)', 'pointer-events': 'all' });
+        },
+
+        _braceAnnotation(w, h, fill, stroke, node) {
+            const g = el('g');
+            const halfY = h / 2;
+            const braceD = `M 15,2 Q 3,2 3,${halfY / 2} Q 3,${halfY} 0,${halfY} Q 3,${halfY} 3,${halfY + halfY / 2} Q 3,${h - 2} 15,${h - 2}`;
+            const brace = el('path', { d: braceD, fill: 'none', stroke, 'stroke-width': '1.8', 'pointer-events': 'all' });
+            g.appendChild(brace);
+
+            // Invisible background
+            const bg = el('rect', { x: 0, y: 0, width: w, height: h, fill: 'transparent', stroke: 'none', 'pointer-events': 'all' });
+            g.insertBefore(bg, brace);
             return g;
         },
 
@@ -445,6 +489,27 @@
          */
         getPort(node, side) {
             const x = node.x || 0, y = node.y || 0, w = node.width || 140, h = node.height || 60;
+            
+            // Specialized snapping ports for Annotation styles
+            if (node.shapeType === 'annotation' || node.shapeType === 'doubleAnnotation' || node.shapeType === 'braceAnnotation') {
+                switch (side) {
+                    case 'top':    return { x: x + 3, y: y + 2 };      // Top corner of left bracket
+                    case 'bottom': return { x: x + 3, y: y + h - 2 };  // Bottom corner of left bracket
+                    case 'left':   return { x: x + 3, y: y + h / 2 };  // Middle-left edge of bracket
+                    case 'right':  return { x: x + w - 3, y: y + h / 2 }; // Right bracket (if double) or right side
+                    default:       return { x: x + 3, y: y + h - 2 };
+                }
+            } else if (node.shapeType === 'balloonCallout') {
+                const pointerSize = 12;
+                switch (side) {
+                    case 'top':    return { x: x + w / 2, y: y };
+                    case 'bottom': return { x: x + 15, y: y + h };     // Snaps exactly to pointer tip!
+                    case 'left':   return { x: x, y: y + (h - pointerSize) / 2 };
+                    case 'right':  return { x: x + w, y: y + (h - pointerSize) / 2 };
+                    default:       return { x: x + 15, y: y + h };
+                }
+            }
+
             switch (side) {
                 case 'top':    return { x: x + w / 2, y: y };
                 case 'bottom': return { x: x + w / 2, y: y + h };
