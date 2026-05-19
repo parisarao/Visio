@@ -419,17 +419,17 @@
                     <div class="prop-row">
                         <div class="prop-group prop-half">
                             <label class="prop-label">Next Step</label>
-                            <input id="prop-next-step" class="prop-input" type="text">
+                            <select id="prop-next-step" class="prop-input"></select>
                         </div>
                     </div>
                     <div class="prop-row">
                         <div class="prop-group prop-half">
                             <label class="prop-label">Yes Path</label>
-                            <input id="prop-yes-path" class="prop-input" type="text">
+                            <select id="prop-yes-path" class="prop-input"></select>
                         </div>
                         <div class="prop-group prop-half">
                             <label class="prop-label">No Path</label>
-                            <input id="prop-no-path" class="prop-input" type="text">
+                            <select id="prop-no-path" class="prop-input"></select>
                         </div>
                     </div>
                     <div class="prop-row" style="margin-top:6px;">
@@ -516,9 +516,10 @@
                         <label class="prop-label">Set Y Position for All (px)</label>
                         <input id="prop-multi-y-pos" class="prop-input" type="number" placeholder="Coordinate (e.g. 150)">
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-                        <button id="btn-multi-align-top" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to the topmost shape's Y position">Align Top</button>
-                        <button id="btn-multi-align-middle" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center;" title="Align all shapes to their average middle Y">Align Middle</button>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+                        <button id="btn-multi-align-top" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center; padding:4px 2px; font-size:11px;" title="Align all shapes to the topmost shape's Y position">Align Top</button>
+                        <button id="btn-multi-align-middle" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center; padding:4px 2px; font-size:11px;" title="Align all shapes to their average middle Y">Align Middle</button>
+                        <button id="btn-multi-align-bottom" class="btn-secondary btn-sm" style="display:flex; align-items:center; justify-content:center; padding:4px 2px; font-size:11px;" title="Align all shapes to the bottom-most shape's bottom position">Align Bottom</button>
                     </div>
                     <div style="margin-top:16px;">
                         <div class="prop-row">

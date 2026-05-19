@@ -47,11 +47,22 @@
                 const pt = renderer()._svgPoint(e);
                 const newX = pt.x - this._dragOffset.x;
                 const newY = pt.y - this._dragOffset.y;
+
+                // Update node coordinate state in memory for real-time connection routing
+                const node = state().getNodes().find(n => n.stepId === this._dragNode);
+                if (node) {
+                    node.x = newX;
+                    node.y = newY;
+                }
+
                 // Direct DOM update for smooth dragging
                 const group = document.querySelector(`[data-id="${this._dragNode}"]`);
                 if (group) {
                     group.setAttribute('transform', `translate(${newX},${newY})`);
                 }
+
+                // Trigger real-time, high-performance edge route updates
+                renderer().renderEdgesOnly();
             });
 
             window.addEventListener('mouseup', (e) => {

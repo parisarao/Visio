@@ -159,6 +159,38 @@
             bus().emit('render:complete');
         }
 
+        renderEdgesOnly() {
+            const s = state().getState();
+            const nodes = s.nodes || [];
+            const settings = s.settings || {};
+            const edges = model().buildEdges(nodes);
+
+            this._clearLayer(this._connectorLayer);
+
+            const connStyle = settings.connectorStyle || 'orthogonal';
+            edges.forEach(edge => {
+                const src = nodes.find(n => n.stepId === edge.source);
+                const tgt = nodes.find(n => n.stepId === edge.target);
+                if (src && tgt) {
+                    const connEl = connectors().createConnector(edge, src, tgt, connStyle);
+                    
+                    if (window.PMB.SelectionManager) {
+                        const selectedEdges = window.PMB.SelectionManager.getSelectedEdges();
+                        if (selectedEdges && selectedEdges.includes(edge.id)) {
+                            const path = connEl.querySelector('.connector-path');
+                            if (path) {
+                                path.setAttribute('stroke-width', '2.5');
+                                path.style.filter = 'drop-shadow(0 0 3px rgba(22, 163, 74, 0.4))';
+                            }
+                        }
+                    }
+                    
+                    this._connectorLayer.appendChild(connEl);
+                }
+            });
+            bus().emit('minimap:update');
+        }
+
         async autoLayout(skipFit = false) {
             const s = state().getState();
             const nodes = s.nodes || [];

@@ -166,6 +166,7 @@
             bindMultiBtn('btn-multi-align-left', 'alignLeft');
             bindMultiBtn('btn-multi-align-center', 'alignCenter');
             bindMultiBtn('btn-multi-align-top', 'alignTop');
+            bindMultiBtn('btn-multi-align-bottom', 'alignBottom');
             bindMultiBtn('btn-multi-align-middle', 'alignMiddle');
             bindMultiBtn('btn-multi-dist-horiz', 'distributeHorizontally');
             bindMultiBtn('btn-multi-dist-vert', 'distributeVertically');
@@ -541,9 +542,32 @@
             document.getElementById('prop-yes-flow-dir').value = node.yesFlowDir || 'default';
             document.getElementById('prop-no-flow-dir').value = node.noFlowDir || 'default';
             document.getElementById('prop-step-spacing').value = (node.stepSpacing !== null && node.stepSpacing !== undefined) ? node.stepSpacing : '';
-            document.getElementById('prop-next-step').value = node.nextStep || '';
-            document.getElementById('prop-yes-path').value = node.yesPath || '';
-            document.getElementById('prop-no-path').value = node.noPath || '';
+            // Populate dynamic dropdown selects for paths
+            const allNodes = state().getNodes() || [];
+            const otherNodes = allNodes.filter(n => n.stepId !== id);
+
+            const populateDropdown = (selectElId, currentValue) => {
+                const selectEl = document.getElementById(selectElId);
+                if (!selectEl) return;
+                
+                // Clear existing
+                selectEl.innerHTML = '<option value="">(None)</option>';
+                
+                // Add options
+                otherNodes.forEach(n => {
+                    const opt = document.createElement('option');
+                    opt.value = n.stepId;
+                    opt.textContent = `${n.stepId}: ${n.stepName || 'Unnamed'}`;
+                    selectEl.appendChild(opt);
+                });
+                
+                // Set current value
+                selectEl.value = currentValue || '';
+            };
+
+            populateDropdown('prop-next-step', node.nextStep);
+            populateDropdown('prop-yes-path', node.yesPath);
+            populateDropdown('prop-no-path', node.noPath);
             const yesLabelEl = document.getElementById('prop-yes-label');
             const noLabelEl = document.getElementById('prop-no-label');
             if (yesLabelEl) yesLabelEl.value = node.yesLabel || 'Yes';

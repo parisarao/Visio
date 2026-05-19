@@ -61,6 +61,14 @@
             const minY = Math.min(...sel.map(n => n.y || 0));
             sel.forEach(n => state().updateNode(n.stepId, { y: minY }));
         },
+        
+        alignBottom() {
+            if (this._selected.length < 2) return;
+            const nodes = state().getNodes();
+            const sel = nodes.filter(n => this._selected.includes(n.stepId));
+            const maxY = Math.max(...sel.map(n => (n.y || 0) + (n.height || 60)));
+            sel.forEach(n => state().updateNode(n.stepId, { y: maxY - (n.height || 60) }));
+        },
 
         alignMiddle() {
             if (this._selected.length < 2) return;
