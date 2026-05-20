@@ -4964,6 +4964,119 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             // Clone SVG
             const clone = svg.cloneNode(true);
 
+            // Helper to parse rgb/rgba color and extract color & opacity
+            function parseColorAndOpacity(colorStr) {
+                if (!colorStr || colorStr === 'none' || colorStr === 'transparent') {
+                    return { color: colorStr, opacity: null };
+                }
+                const rgbaMatch = colorStr.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+                if (rgbaMatch) {
+                    const r = rgbaMatch[1];
+                    const g = rgbaMatch[2];
+                    const b = rgbaMatch[3];
+                    const a = rgbaMatch[4];
+                    const rgbColor = `rgb(${r}, ${g}, ${b})`;
+                    if (a !== undefined && a !== null && a !== '1') {
+                        return { color: rgbColor, opacity: parseFloat(a) };
+                    }
+                    return { color: rgbColor, opacity: null };
+                }
+                return { color: colorStr, opacity: null };
+            }
+
+            // Parallel walk: original live DOM elements and cloned off-screen elements
+            const originalElements = [svg, ...svg.querySelectorAll('*')];
+            const clonedElements = [clone, ...clone.querySelectorAll('*')];
+
+            for (let i = 0; i < originalElements.length; i++) {
+                const orig = originalElements[i];
+                const cln = clonedElements[i];
+                if (!orig || !cln) continue;
+
+                // Remove filters for clean Visio-optimized rendering
+                cln.removeAttribute('filter');
+
+                // Read computed styles of original live DOM element
+                const style = window.getComputedStyle(orig);
+
+                // Flatten colors & stroke properties
+                const fillStyle = style.fill;
+                if (fillStyle && fillStyle !== 'none') {
+                    const { color, opacity } = parseColorAndOpacity(fillStyle);
+                    cln.setAttribute('fill', color);
+                    if (opacity !== null) {
+                        cln.setAttribute('fill-opacity', opacity);
+                    } else {
+                        const fillOpacity = style.fillOpacity;
+                        if (fillOpacity && fillOpacity !== '1') {
+                            cln.setAttribute('fill-opacity', fillOpacity);
+                        }
+                    }
+                } else if (fillStyle === 'none') {
+                    cln.setAttribute('fill', 'none');
+                }
+
+                const strokeStyle = style.stroke;
+                if (strokeStyle && strokeStyle !== 'none') {
+                    const { color, opacity } = parseColorAndOpacity(strokeStyle);
+                    cln.setAttribute('stroke', color);
+                    if (opacity !== null) {
+                        cln.setAttribute('stroke-opacity', opacity);
+                    } else {
+                        const strokeOpacity = style.strokeOpacity;
+                        if (strokeOpacity && strokeOpacity !== '1') {
+                            cln.setAttribute('stroke-opacity', strokeOpacity);
+                        }
+                    }
+
+                    const strokeWidth = style.strokeWidth;
+                    if (strokeWidth) {
+                        cln.setAttribute('stroke-width', strokeWidth);
+                    }
+
+                    const strokeDasharray = style.strokeDasharray;
+                    if (strokeDasharray && strokeDasharray !== 'none') {
+                        cln.setAttribute('stroke-dasharray', strokeDasharray);
+                    }
+                } else if (strokeStyle === 'none') {
+                    cln.setAttribute('stroke', 'none');
+                }
+
+                const opacity = style.opacity;
+                if (opacity && opacity !== '1') {
+                    cln.setAttribute('opacity', opacity);
+                }
+
+                const display = style.display;
+                if (display === 'none') {
+                    cln.setAttribute('display', 'none');
+                }
+
+                const tagName = orig.tagName.toLowerCase();
+                if (tagName === 'text' || tagName === 'tspan') {
+                    const fontSize = style.fontSize;
+                    if (fontSize) cln.setAttribute('font-size', fontSize);
+
+                    const fontFamily = style.fontFamily;
+                    if (fontFamily) {
+                        const cleanFontFamily = fontFamily.replace(/['"]/g, '');
+                        cln.setAttribute('font-family', cleanFontFamily);
+                    }
+
+                    const fontWeight = style.fontWeight;
+                    if (fontWeight) cln.setAttribute('font-weight', fontWeight);
+
+                    const fontStyle = style.fontStyle;
+                    if (fontStyle) cln.setAttribute('font-style', fontStyle);
+
+                    const textAnchor = style.textAnchor;
+                    if (textAnchor) cln.setAttribute('text-anchor', textAnchor);
+
+                    const dominantBaseline = style.dominantBaseline;
+                    if (dominantBaseline) cln.setAttribute('dominant-baseline', dominantBaseline);
+                }
+            }
+
             // Compute exact visual bounding box of contents
             const layers = [
                 document.getElementById('swimlane-layer'),
@@ -5000,12 +5113,14 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             clone.setAttribute('width', w);
             clone.setAttribute('height', h);
 
-            // Remove interactive helper overlay elements
+            // Empty interactive layers to clean them out of the export
             const overlay = clone.querySelector('#overlay-layer');
             if (overlay) overlay.innerHTML = '';
+            
+            const quickAdd = clone.querySelector('#quick-add-layer');
+            if (quickAdd) quickAdd.innerHTML = '';
 
-            // Some SVG rasterizers used by PDF/image export do not reliably
-            // apply CSS fill:none to open connector paths, causing black wedges.
+            // Clean up connector path attributes (already processed by loop, but we make sure they are correct)
             clone.querySelectorAll('.connector-path').forEach(path => {
                 path.setAttribute('fill', 'none');
                 path.setAttribute('fill-opacity', '0');
@@ -5015,32 +5130,28 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                 rect.setAttribute('fill-opacity', '1');
             });
 
-            // Apply solid white or light canvas background color depending on theme
+            // Apply solid canvas background color dynamically resolved from container or body theme
             const gridBg = clone.querySelector('#grid-bg');
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
             if (gridBg) {
-                gridBg.setAttribute('fill', currentTheme === 'light' ? '#ffffff' : 'var(--bg-canvas)');
-            }
-
-            // Inline all active styles (supports resolving HSL/HEX CSS variables)
-            const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-            let cssText = '';
-            for (const sheet of document.styleSheets) {
-                try {
-                    const rules = sheet.cssRules || sheet.rules;
-                    if (rules) {
-                        for (const rule of rules) {
-                            cssText += rule.cssText + '\n';
-                        }
+                const canvasContainer = document.getElementById('canvas-container') || document.body;
+                let canvasBgColor = '#ffffff';
+                if (canvasContainer) {
+                    const style = window.getComputedStyle(canvasContainer);
+                    let bg = style.backgroundColor;
+                    if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') {
+                        bg = window.getComputedStyle(document.body).backgroundColor;
                     }
-                } catch (e) {
-                    // Skip cross-origin sheets safely
+                    if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+                        const { color } = parseColorAndOpacity(bg);
+                        canvasBgColor = color;
+                    }
                 }
+                gridBg.setAttribute('fill', canvasBgColor);
+                gridBg.removeAttribute('fill-opacity');
             }
-            styleEl.textContent = cssText;
-            clone.insertBefore(styleEl, clone.firstChild);
 
-            // Set current theme attribute for correct variable inheritance
+            // Inline theme identifier just in case, but no large browser stylesheet is needed anymore!
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
             clone.setAttribute('data-theme', currentTheme);
 
             return { clone, width: w, height: h };
