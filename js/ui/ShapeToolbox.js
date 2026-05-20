@@ -67,7 +67,7 @@
                     state().addNode(node);
                     setTimeout(() => {
                         if (window.PMB.DiagramRenderer) {
-                            window.PMB.DiagramRenderer.autoLayout();
+                            window.PMB.DiagramRenderer.autoLayout(false, true);
                         }
                     }, 50);
                     bus().emit('toast', 'info', `Added ${def.label} node`);
@@ -120,7 +120,7 @@
 
             document.getElementById('lane-orientation').addEventListener('change', (e) => {
                 state().updateSettings({ laneOrientation: e.target.value });
-                window.PMB.DiagramRenderer.autoLayout();
+                window.PMB.DiagramRenderer.autoLayout(false, true);
             });
         },
 
@@ -231,6 +231,19 @@
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
             const laneOrientationInput = document.getElementById('lane-orientation');
+            const swimlanePaddingInput = document.getElementById('swimlane-padding');
+
+            if (swimlanePaddingInput) {
+                let debouncePad = null;
+                swimlanePaddingInput.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    state().updateSettings({ swimlanePadding: val });
+                    if (debouncePad) clearTimeout(debouncePad);
+                    debouncePad = setTimeout(() => {
+                        window.PMB.DiagramRenderer.autoLayout(false, true);
+                    }, 50);
+                });
+            }
 
             if (spacingInput && spacingVal) {
                 let debounceTimeout = null;
@@ -241,7 +254,7 @@
 
                     if (debounceTimeout) clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
-                        window.PMB.DiagramRenderer.autoLayout(true);
+                        window.PMB.DiagramRenderer.autoLayout(true, true);
                     }, 50);
                 });
             }
@@ -249,7 +262,7 @@
             if (directionInput) {
                 directionInput.addEventListener('change', (e) => {
                     state().updateSettings({ flowDirection: e.target.value });
-                    window.PMB.DiagramRenderer.autoLayout();
+                    window.PMB.DiagramRenderer.autoLayout(false, true);
                 });
             }
         },
@@ -260,6 +273,11 @@
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
             const laneOrientationInput = document.getElementById('lane-orientation');
+            const swimlanePaddingInput = document.getElementById('swimlane-padding');
+
+            if (swimlanePaddingInput && settings.swimlanePadding !== undefined) {
+                swimlanePaddingInput.value = settings.swimlanePadding;
+            }
 
             if (spacingInput && settings.nodeSpacing !== undefined) {
                 spacingInput.value = settings.nodeSpacing;

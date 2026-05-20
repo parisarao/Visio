@@ -200,10 +200,24 @@
                             <option value="vertical-up">Vertical Up (Above previous)</option>
                         </select>
                     </div>
+                    <div class="prop-group" style="margin-top:8px;">
+                        <label class="prop-label" style="display:flex; align-items:center; gap:6px;">
+                            <input type="checkbox" id="layout-auto-lock" title="Prevent automatic layout on changes">
+                            Lock Auto-Layout
+                        </label>
+                    </div>
+                    <div class="prop-group" style="margin-top:8px;">
+                        <label class="prop-label">Wrap Max Width (px)</label>
+                        <input id="layout-max-width" class="prop-input" type="number" placeholder="e.g. 1200 (Empty for none)" title="Wrap shapes to next row if container width exceeds this">
+                    </div>
                 </div>
                 <!-- Swimlane Controls -->
                 <div class="panel-section">
                     <div class="panel-section-title">Swimlanes</div>
+                    <div class="prop-group" style="margin-bottom:8px;">
+                        <label class="prop-label">Swimlane Padding (px)</label>
+                        <input id="swimlane-padding" class="prop-input" type="number" min="0" max="200" value="20" title="Adjust gap between shapes and swimlane borders">
+                    </div>
                     <div id="swimlane-controls" class="swimlane-controls">
                         <button id="btn-add-lane" class="btn-secondary btn-block">+ Add Row Swimlane</button>
                         <button id="btn-add-column-lane" class="btn-secondary btn-block" style="margin-top:6px;">+ Add Column Swimlane</button>
@@ -249,6 +263,7 @@
                     <g id="swimlane-layer"></g>
                     <g id="connector-layer"></g>
                     <g id="node-layer"></g>
+                    <g id="quick-add-layer"></g>
                     <g id="overlay-layer"></g>
                 </svg>
             </div>
@@ -637,6 +652,19 @@
         </div>
     </div>
 
+    <!-- ===== QUICK ADD MENU ===== -->
+    <div id="quick-add-menu" class="quick-add-menu hidden" style="position:absolute; z-index:100; background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:0 4px 6px rgba(0,0,0,0.1); padding:8px; width:200px;">
+        <div style="font-size:11px; font-weight:600; color:var(--text-muted); margin-bottom:4px; padding:0 4px;">Select Shape to Add</div>
+        <select id="quick-add-shape-type" class="prop-select" style="width:100%; margin-bottom:8px;">
+            <option value="process">Process</option>
+            <option value="decision">Decision</option>
+            <option value="document">Document</option>
+            <option value="database">Database</option>
+            <option value="end">End</option>
+        </select>
+        <button id="btn-quick-add-confirm" class="btn-primary btn-sm btn-block">Add & Connect</button>
+    </div>
+
     <!-- ===== CONTEXT MENU ===== -->
     <div id="context-menu" class="context-menu hidden"></div>
 
@@ -665,6 +693,7 @@
     <script src="js/editor/DragDropManager.js"></script>
     <script src="js/editor/TextEditor.js"></script>
     <script src="js/editor/ContextMenu.js"></script>
+    <script src="js/editor/QuickAdd.js"></script>
     <script src="js/core/ExcelRepositoryManager.js"></script>
     <script src="js/app.js"></script>
 </body>

@@ -78,7 +78,7 @@
 
                     // Auto layout immediately on flow direction or spacing changes to show the results
                     if (f.field === 'layoutFlow' || f.field === 'yesFlowDir' || f.field === 'noFlowDir' || f.field === 'stepSpacing') {
-                        window.PMB.DiagramRenderer.autoLayout(true);
+                        window.PMB.DiagramRenderer.autoLayout(true, true);
                     }
                 });
                 // Also listen to input for text fields for live preview
@@ -95,7 +95,7 @@
                         }
                         state().updateNode(this._currentNodeId, { [f.field]: val });
                         if (f.field === 'stepSpacing') {
-                            window.PMB.DiagramRenderer.autoLayout(true);
+                            window.PMB.DiagramRenderer.autoLayout(true, true);
                         }
                     });
                 }

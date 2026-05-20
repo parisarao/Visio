@@ -32,7 +32,7 @@
             if (flowDirection === 'vertical') dir = 'DOWN';
             else if (flowDirection === 'vertical-up') dir = 'UP';
 
-            const headerOffset = lanes && lanes.length > 0 ? 60 : 20;
+            const headerOffset = lanes && lanes.length > 0 ? 40 : 10;
             const isHoriz = !lanes || lanes.length === 0 || settings.laneOrientation !== 'vertical';
 
             // Build flat ELK graph for maximum robustness and optimal routing
@@ -42,16 +42,27 @@
                     'elk.algorithm': 'layered',
                     'elk.direction': dir,
                     'elk.spacing.nodeNode': String(minGap),
-                    'elk.layered.spacing.nodeNodeBetweenLayers': String(minGap + 35),
-                    'elk.layered.spacing.edgeNodeBetweenLayers': String(minGap * 0.4),
+                    'elk.layered.spacing.nodeNodeBetweenLayers': String(minGap + 15),
+                    'elk.layered.spacing.edgeNodeBetweenLayers': '20',
+                    'elk.spacing.portPort': '15',
+                    'elk.spacing.edgeEdge': '15',
                     'elk.edgeRouting': 'ORTHOGONAL',
                     'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
                     'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-                    'elk.padding': '[top=40,left=80,bottom=40,right=40]'
+                    'elk.padding': '[top=15,left=20,bottom=15,right=20]'
                 },
                 children: [],
                 edges: []
             };
+
+            const maxWidthInput = document.getElementById('layout-max-width');
+            const maxWidth = maxWidthInput ? parseFloat(maxWidthInput.value) : NaN;
+            if (!isNaN(maxWidth) && maxWidth > 200) {
+                const avgArea = 140 * 60 * 1.5;
+                const approxHeight = Math.max(200, (nodes.length * avgArea) / maxWidth);
+                elkGraph.layoutOptions['elk.aspectRatio'] = String(maxWidth / approxHeight);
+                elkGraph.layoutOptions['elk.layered.wrapping.strategy'] = 'MULTI_EDGE';
+            }
 
             nodes.forEach(n => {
                 elkGraph.children.push({
@@ -76,6 +87,8 @@
                 const laneMap = {};
                 sortedLanes.forEach((lane, idx) => { laneMap[lane.id] = idx; });
 
+                const swimlanePad = settings.swimlanePadding !== undefined ? settings.swimlanePadding : 20;
+
                 const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
                 const startY = titleText ? 70 : 20;
                 const laneHeight = 180;
@@ -92,7 +105,7 @@
                         if (lpos && lpos.y < minElkY) minElkY = lpos.y;
                     });
                     if (minElkY !== Infinity) {
-                        minYShift = startY + headerH + 30 - minElkY;
+                        minYShift = startY + headerH + 15 - minElkY;
                     }
                 }
 
@@ -124,7 +137,7 @@
                                         if (lpos && lpos.x < minElkX) minElkX = lpos.x;
                                     });
                                     const relX = pos.x - minElkX;
-                                    nx = laneX + 30 + relX;
+                                    nx = laneX + swimlanePad + relX;
                                 }
                             }
 
@@ -140,7 +153,7 @@
                                         if (lpos && lpos.y < minElkY) minElkY = lpos.y;
                                     });
                                     const relY = pos.y - minElkY;
-                                    ny = laneY + 30 + relY;
+                                    ny = laneY + swimlanePad + relY;
                                 }
                             }
                         } else {
@@ -161,7 +174,7 @@
                                         });
                                         
                                         const relY = pos.y - minElkY;
-                                        ny = laneY + 40 + relY; // 40px top padding
+                                        ny = laneY + swimlanePad + relY;
                                     } else {
                                         // Stack vertical lanes horizontally
                                         const laneX = 20 + laneIdx * laneWidth;
@@ -175,7 +188,7 @@
                                         });
                                         
                                         const relX = pos.x - minElkX;
-                                        nx = laneX + 40 + relX; // 40px left padding
+                                        nx = laneX + swimlanePad + relX;
                                     }
                                 }
                             }

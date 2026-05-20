@@ -54,6 +54,7 @@
         PMB.DragDropManager.init();
         PMB.TextEditor.init();
         PMB.ContextMenu.init();
+        if (PMB.QuickAdd) PMB.QuickAdd.init();
 
         // Try to restore auto-save
         const hasExcelDb = localStorage.getItem('pmb_has_file_handle') === 'true' || localStorage.getItem('pmb_active_account');

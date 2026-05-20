@@ -191,7 +191,12 @@
             bus().emit('minimap:update');
         }
 
-        async autoLayout(skipFit = false) {
+        async autoLayout(skipFit = false, isAutomatic = false) {
+            const lockEl = document.getElementById('layout-auto-lock');
+            if (isAutomatic && lockEl && lockEl.checked) {
+                return;
+            }
+
             const s = state().getState();
             const nodes = s.nodes || [];
             const settings = s.settings || {};
@@ -228,7 +233,7 @@
             // If nodes have no positions, auto-layout
             const hasPositions = s.nodes.some(n => n.x > 0 || n.y > 0);
             if (!hasPositions && s.nodes.length > 0) {
-                await this.autoLayout();
+                await this.autoLayout(false, true);
             } else {
                 this.render();
                 setTimeout(() => this.fitToScreen(), 200);

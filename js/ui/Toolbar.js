@@ -110,7 +110,7 @@
                 state().addNode(node);
                 setTimeout(() => {
                     if (window.PMB.DiagramRenderer) {
-                        window.PMB.DiagramRenderer.autoLayout();
+                        window.PMB.DiagramRenderer.autoLayout(false, true);
                     }
                 }, 50);
             });

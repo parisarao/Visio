@@ -930,10 +930,24 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                             <option value="vertical-up">Vertical Up (Above previous)</option>
                         </select>
                     </div>
+                    <div class="prop-group" style="margin-top:8px;">
+                        <label class="prop-label" style="display:flex; align-items:center; gap:6px;">
+                            <input type="checkbox" id="layout-auto-lock" title="Prevent automatic layout on changes">
+                            Lock Auto-Layout
+                        </label>
+                    </div>
+                    <div class="prop-group" style="margin-top:8px;">
+                        <label class="prop-label">Wrap Max Width (px)</label>
+                        <input id="layout-max-width" class="prop-input" type="number" placeholder="e.g. 1200 (Empty for none)" title="Wrap shapes to next row if container width exceeds this">
+                    </div>
                 </div>
                 <!-- Swimlane Controls -->
                 <div class="panel-section">
                     <div class="panel-section-title">Swimlanes</div>
+                    <div class="prop-group" style="margin-bottom:8px;">
+                        <label class="prop-label">Swimlane Padding (px)</label>
+                        <input id="swimlane-padding" class="prop-input" type="number" min="0" max="200" value="20" title="Adjust gap between shapes and swimlane borders">
+                    </div>
                     <div id="swimlane-controls" class="swimlane-controls">
                         <button id="btn-add-lane" class="btn-secondary btn-block">+ Add Row Swimlane</button>
                         <button id="btn-add-column-lane" class="btn-secondary btn-block" style="margin-top:6px;">+ Add Column Swimlane</button>
@@ -979,6 +993,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     <g id="swimlane-layer"></g>
                     <g id="connector-layer"></g>
                     <g id="node-layer"></g>
+                    <g id="quick-add-layer"></g>
                     <g id="overlay-layer"></g>
                 </svg>
             </div>
@@ -1365,6 +1380,19 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             <div id="modal-body" class="modal-body"></div>
             <div id="modal-footer" class="modal-footer"></div>
         </div>
+    </div>
+
+    <!-- ===== QUICK ADD MENU ===== -->
+    <div id="quick-add-menu" class="quick-add-menu hidden" style="position:absolute; z-index:100; background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:0 4px 6px rgba(0,0,0,0.1); padding:8px; width:200px;">
+        <div style="font-size:11px; font-weight:600; color:var(--text-muted); margin-bottom:4px; padding:0 4px;">Select Shape to Add</div>
+        <select id="quick-add-shape-type" class="prop-select" style="width:100%; margin-bottom:8px;">
+            <option value="process">Process</option>
+            <option value="decision">Decision</option>
+            <option value="document">Document</option>
+            <option value="database">Database</option>
+            <option value="end">End</option>
+        </select>
+        <button id="btn-quick-add-confirm" class="btn-primary btn-sm btn-block">Add & Connect</button>
     </div>
 
     <!-- ===== CONTEXT MENU ===== -->
@@ -2013,13 +2041,44 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             const def = SHAPE_DEFAULTS[type] || SHAPE_DEFAULTS.process;
             const settings = (window.PMB && window.PMB.StateManager) ? window.PMB.StateManager.getSettings() : {};
 
+            let baseName = overrides?.stepName || 'New Step';
+            let uniqueName = baseName;
+            let newX = overrides?.x !== undefined ? overrides.x : 40;
+            let newY = overrides?.y !== undefined ? overrides.y : 40;
+
+            if (window.PMB && window.PMB.StateManager && overrides?.x === undefined) {
+                const existingNodes = window.PMB.StateManager.getNodes() || [];
+                let counter = 1;
+                while (existingNodes.some(n => n.stepName === uniqueName)) {
+                    uniqueName = `${baseName} (${counter})`;
+                    counter++;
+                }
+
+                // Find non-overlapping spot
+                const isOccupied = (tx, ty) => {
+                    return existingNodes.some(n => {
+                        const nx = n.x || 0;
+                        const ny = n.y || 0;
+                        const nw = n.width || 140;
+                        const nh = n.height || 60;
+                        return !(tx + 140 <= nx || tx >= nx + nw || ty + 60 <= ny || ty >= ny + nh);
+                    });
+                };
+                while (isOccupied(newX, newY)) {
+                    newX += 20;
+                    newY += 20;
+                }
+            }
+
             return {
                 stepId: overrides?.stepId || this.generateId('S'),
-                stepName: overrides?.stepName || 'New Step',
+                stepName: uniqueName,
                 description: overrides?.description || '',
                 shapeType: type,
                 swimlane: overrides?.swimlane || '',
                 swimlaneColumn: overrides?.swimlaneColumn || '',
+                x: newX,
+                y: newY,
                 nextStep: overrides?.nextStep || '',
                 yesPath: overrides?.yesPath || '',
                 noPath: overrides?.noPath || '',
@@ -3604,7 +3663,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             const settings = state().getSettings() || {};
             const rowHeaderW = this.LANE_HEADER_WIDTH;
             const colHeaderH = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
             const gap = 2;
 
             const colWidths = columns.map(col => {
@@ -3734,9 +3793,10 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
         },
 
         _renderHorizontal(lanes, nodes, layer, bounds) {
+            const settings = state().getSettings() || {};
             let currentY = 20;
             const headerW = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
 
             // Calculate total width from nodes
             let maxX = 400;
@@ -3746,7 +3806,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             });
             const totalWidth = maxX + headerW + padding;
 
-            const settings = state().getSettings() || {};
+            // settings are already read at top
 
             // Dynamic diagram title header at the top
             const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
@@ -3852,9 +3912,10 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
         },
 
         _renderVertical(lanes, nodes, layer, bounds) {
+            const settings = state().getSettings() || {};
             let currentX = 20;
             const headerH = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
 
             // Calculate total width of all vertical lanes combined
             let totalWidth = 0;
@@ -3873,7 +3934,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                 totalWidth += laneWidth + 2;
             });
 
-            const settings = state().getSettings() || {};
+            // settings already read at top
 
             let startY = 10;
             const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
@@ -4024,7 +4085,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             if (flowDirection === 'vertical') dir = 'DOWN';
             else if (flowDirection === 'vertical-up') dir = 'UP';
 
-            const headerOffset = lanes && lanes.length > 0 ? 60 : 20;
+            const headerOffset = lanes && lanes.length > 0 ? 40 : 10;
             const isHoriz = !lanes || lanes.length === 0 || settings.laneOrientation !== 'vertical';
 
             // Build flat ELK graph for maximum robustness and optimal routing
@@ -4034,16 +4095,27 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     'elk.algorithm': 'layered',
                     'elk.direction': dir,
                     'elk.spacing.nodeNode': String(minGap),
-                    'elk.layered.spacing.nodeNodeBetweenLayers': String(minGap + 35),
-                    'elk.layered.spacing.edgeNodeBetweenLayers': String(minGap * 0.4),
+                    'elk.layered.spacing.nodeNodeBetweenLayers': String(minGap + 15),
+                    'elk.layered.spacing.edgeNodeBetweenLayers': '20',
+                    'elk.spacing.portPort': '15',
+                    'elk.spacing.edgeEdge': '15',
                     'elk.edgeRouting': 'ORTHOGONAL',
                     'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
                     'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-                    'elk.padding': '[top=40,left=80,bottom=40,right=40]'
+                    'elk.padding': '[top=15,left=20,bottom=15,right=20]'
                 },
                 children: [],
                 edges: []
             };
+
+            const maxWidthInput = document.getElementById('layout-max-width');
+            const maxWidth = maxWidthInput ? parseFloat(maxWidthInput.value) : NaN;
+            if (!isNaN(maxWidth) && maxWidth > 200) {
+                const avgArea = 140 * 60 * 1.5;
+                const approxHeight = Math.max(200, (nodes.length * avgArea) / maxWidth);
+                elkGraph.layoutOptions['elk.aspectRatio'] = String(maxWidth / approxHeight);
+                elkGraph.layoutOptions['elk.layered.wrapping.strategy'] = 'MULTI_EDGE';
+            }
 
             nodes.forEach(n => {
                 elkGraph.children.push({
@@ -4068,6 +4140,8 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                 const laneMap = {};
                 sortedLanes.forEach((lane, idx) => { laneMap[lane.id] = idx; });
 
+                const swimlanePad = settings.swimlanePadding !== undefined ? settings.swimlanePadding : 20;
+
                 const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
                 const startY = titleText ? 70 : 20;
                 const laneHeight = 180;
@@ -4084,7 +4158,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                         if (lpos && lpos.y < minElkY) minElkY = lpos.y;
                     });
                     if (minElkY !== Infinity) {
-                        minYShift = startY + headerH + 30 - minElkY;
+                        minYShift = startY + headerH + 15 - minElkY;
                     }
                 }
 
@@ -4116,7 +4190,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                                         if (lpos && lpos.x < minElkX) minElkX = lpos.x;
                                     });
                                     const relX = pos.x - minElkX;
-                                    nx = laneX + 30 + relX;
+                                    nx = laneX + swimlanePad + relX;
                                 }
                             }
 
@@ -4132,7 +4206,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                                         if (lpos && lpos.y < minElkY) minElkY = lpos.y;
                                     });
                                     const relY = pos.y - minElkY;
-                                    ny = laneY + 30 + relY;
+                                    ny = laneY + swimlanePad + relY;
                                 }
                             }
                         } else {
@@ -4153,7 +4227,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                                         });
                                         
                                         const relY = pos.y - minElkY;
-                                        ny = laneY + 40 + relY; // 40px top padding
+                                        ny = laneY + swimlanePad + relY;
                                     } else {
                                         // Stack vertical lanes horizontally
                                         const laneX = 20 + laneIdx * laneWidth;
@@ -4167,7 +4241,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                                         });
                                         
                                         const relX = pos.x - minElkX;
-                                        nx = laneX + 40 + relX; // 40px left padding
+                                        nx = laneX + swimlanePad + relX;
                                     }
                                 }
                             }
@@ -4522,7 +4596,12 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             bus().emit('minimap:update');
         }
 
-        async autoLayout(skipFit = false) {
+        async autoLayout(skipFit = false, isAutomatic = false) {
+            const lockEl = document.getElementById('layout-auto-lock');
+            if (isAutomatic && lockEl && lockEl.checked) {
+                return;
+            }
+
             const s = state().getState();
             const nodes = s.nodes || [];
             const settings = s.settings || {};
@@ -4559,7 +4638,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             // If nodes have no positions, auto-layout
             const hasPositions = s.nodes.some(n => n.x > 0 || n.y > 0);
             if (!hasPositions && s.nodes.length > 0) {
-                await this.autoLayout();
+                await this.autoLayout(false, true);
             } else {
                 this.render();
                 setTimeout(() => this.fitToScreen(), 200);
@@ -5231,7 +5310,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                 state().addNode(node);
                 setTimeout(() => {
                     if (window.PMB.DiagramRenderer) {
-                        window.PMB.DiagramRenderer.autoLayout();
+                        window.PMB.DiagramRenderer.autoLayout(false, true);
                     }
                 }, 50);
             });
@@ -6039,7 +6118,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     state().addNode(node);
                     setTimeout(() => {
                         if (window.PMB.DiagramRenderer) {
-                            window.PMB.DiagramRenderer.autoLayout();
+                            window.PMB.DiagramRenderer.autoLayout(false, true);
                         }
                     }, 50);
                     bus().emit('toast', 'info', `Added ${def.label} node`);
@@ -6092,7 +6171,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
 
             document.getElementById('lane-orientation').addEventListener('change', (e) => {
                 state().updateSettings({ laneOrientation: e.target.value });
-                window.PMB.DiagramRenderer.autoLayout();
+                window.PMB.DiagramRenderer.autoLayout(false, true);
             });
         },
 
@@ -6203,6 +6282,19 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
             const laneOrientationInput = document.getElementById('lane-orientation');
+            const swimlanePaddingInput = document.getElementById('swimlane-padding');
+
+            if (swimlanePaddingInput) {
+                let debouncePad = null;
+                swimlanePaddingInput.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    state().updateSettings({ swimlanePadding: val });
+                    if (debouncePad) clearTimeout(debouncePad);
+                    debouncePad = setTimeout(() => {
+                        window.PMB.DiagramRenderer.autoLayout(false, true);
+                    }, 50);
+                });
+            }
 
             if (spacingInput && spacingVal) {
                 let debounceTimeout = null;
@@ -6213,7 +6305,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
 
                     if (debounceTimeout) clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
-                        window.PMB.DiagramRenderer.autoLayout(true);
+                        window.PMB.DiagramRenderer.autoLayout(true, true);
                     }, 50);
                 });
             }
@@ -6221,7 +6313,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             if (directionInput) {
                 directionInput.addEventListener('change', (e) => {
                     state().updateSettings({ flowDirection: e.target.value });
-                    window.PMB.DiagramRenderer.autoLayout();
+                    window.PMB.DiagramRenderer.autoLayout(false, true);
                 });
             }
         },
@@ -6232,6 +6324,11 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             const spacingVal = document.getElementById('layout-spacing-val');
             const directionInput = document.getElementById('layout-direction');
             const laneOrientationInput = document.getElementById('lane-orientation');
+            const swimlanePaddingInput = document.getElementById('swimlane-padding');
+
+            if (swimlanePaddingInput && settings.swimlanePadding !== undefined) {
+                swimlanePaddingInput.value = settings.swimlanePadding;
+            }
 
             if (spacingInput && settings.nodeSpacing !== undefined) {
                 spacingInput.value = settings.nodeSpacing;
@@ -6492,7 +6589,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
 
                     // Auto layout immediately on flow direction or spacing changes to show the results
                     if (f.field === 'layoutFlow' || f.field === 'yesFlowDir' || f.field === 'noFlowDir' || f.field === 'stepSpacing') {
-                        window.PMB.DiagramRenderer.autoLayout(true);
+                        window.PMB.DiagramRenderer.autoLayout(true, true);
                     }
                 });
                 // Also listen to input for text fields for live preview
@@ -6509,7 +6606,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                         }
                         state().updateNode(this._currentNodeId, { [f.field]: val });
                         if (f.field === 'stepSpacing') {
-                            window.PMB.DiagramRenderer.autoLayout(true);
+                            window.PMB.DiagramRenderer.autoLayout(true, true);
                         }
                     });
                 }
@@ -7884,6 +7981,214 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
 
     window.PMB = window.PMB || {};
     window.PMB.ContextMenu = ContextMenu;
+})();
+
+</script>
+    <!-- === INLINED SCRIPT: js/editor/QuickAdd.js === -->
+<script>
+/**
+ * QuickAdd — Interactive shape creation and connection
+ */
+(function () {
+    'use strict';
+    const bus = () => window.PMB.EventBus;
+    const state = () => window.PMB.StateManager;
+    const model = () => window.PMB.DataModel;
+    const renderer = () => window.PMB.DiagramRenderer;
+
+    const NS = 'http://www.w3.org/2000/svg';
+
+    function el(tag, attrs) {
+        const e = document.createElementNS(NS, tag);
+        if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+        return e;
+    }
+
+    const QuickAdd = {
+        _layer: null,
+        _activeNodeId: null,
+        _activeDirection: null,
+
+        init() {
+            this._layer = document.getElementById('quick-add-layer');
+            
+            bus().on('selection:changed', (sel) => {
+                if (sel && sel.length === 1) {
+                    this._activeNodeId = sel[0];
+                    this.render();
+                } else {
+                    this._activeNodeId = null;
+                    this.clear();
+                }
+            });
+
+            bus().on('render:complete', () => {
+                if (this._activeNodeId) this.render();
+            });
+
+            this._setupInteractions();
+        },
+
+        clear() {
+            if (this._layer) {
+                while (this._layer.firstChild) this._layer.removeChild(this._layer.firstChild);
+            }
+        },
+
+        render() {
+            this.clear();
+            if (!this._activeNodeId) return;
+
+            const node = state().getNodes().find(n => n.stepId === this._activeNodeId);
+            if (!node) return;
+
+            const padding = 20;
+            const w = node.width || 140;
+            const h = node.height || 60;
+            const x = node.x || 0;
+            const y = node.y || 0;
+
+            const points = [
+                { dir: 'up', cx: x + w/2, cy: y - padding },
+                { dir: 'right', cx: x + w + padding, cy: y + h/2 },
+                { dir: 'down', cx: x + w/2, cy: y + h + padding },
+                { dir: 'left', cx: x - padding, cy: y + h/2 }
+            ];
+
+            points.forEach(pt => {
+                const g = el('g', {
+                    class: 'quick-add-btn',
+                    'data-dir': pt.dir,
+                    'data-node-id': node.stepId,
+                    style: 'cursor: pointer; pointer-events: all;'
+                });
+
+                // Invisible larger hit area
+                const hit = el('circle', {
+                    cx: pt.cx, cy: pt.cy, r: 15,
+                    fill: 'transparent'
+                });
+                
+                // Visible button
+                const circle = el('circle', {
+                    cx: pt.cx, cy: pt.cy, r: 8,
+                    fill: '#3b82f6', stroke: '#ffffff', 'stroke-width': '2'
+                });
+
+                // Plus icon
+                const plus = el('path', {
+                    d: `M ${pt.cx - 3} ${pt.cy} L ${pt.cx + 3} ${pt.cy} M ${pt.cx} ${pt.cy - 3} L ${pt.cx} ${pt.cy + 3}`,
+                    stroke: '#ffffff', 'stroke-width': '2', 'stroke-linecap': 'round'
+                });
+
+                g.appendChild(hit);
+                g.appendChild(circle);
+                g.appendChild(plus);
+                this._layer.appendChild(g);
+            });
+        },
+
+        _setupInteractions() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const menu = document.getElementById('quick-add-menu');
+            const confirmBtn = document.getElementById('btn-quick-add-confirm');
+            const shapeSelect = document.getElementById('quick-add-shape-type');
+
+            wrapper.addEventListener('mousedown', (e) => {
+                let target = e.target;
+                let isBtn = false;
+                let dir = null;
+                let nodeId = null;
+
+                while (target && target !== wrapper) {
+                    const cls = (target.getAttribute && target.getAttribute('class')) || '';
+                    if (cls.indexOf('quick-add-btn') !== -1) {
+                        isBtn = true;
+                        dir = target.getAttribute('data-dir');
+                        nodeId = target.getAttribute('data-node-id');
+                        break;
+                    }
+                    target = target.parentNode;
+                }
+
+                if (isBtn && nodeId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    this._activeDirection = dir;
+                    this._activeNodeId = nodeId;
+
+                    // Position menu
+                    menu.style.left = e.clientX + 'px';
+                    menu.style.top = e.clientY + 'px';
+                    menu.classList.remove('hidden');
+                } else if (!menu.contains(e.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+
+            confirmBtn.addEventListener('click', () => {
+                if (!this._activeNodeId || !this._activeDirection) return;
+
+                const node = state().getNodes().find(n => n.stepId === this._activeNodeId);
+                if (!node) return;
+
+                const shapeType = shapeSelect.value;
+                const gap = (state().getSettings() && state().getSettings().nodeSpacing !== undefined) ? state().getSettings().nodeSpacing : 80;
+                let nx = node.x || 0;
+                let ny = node.y || 0;
+                if (this._activeDirection === 'right') nx += (node.width || 140) + gap;
+                else if (this._activeDirection === 'left') nx -= 140 + gap;
+                else if (this._activeDirection === 'down') ny += (node.height || 60) + gap;
+                else if (this._activeDirection === 'up') ny -= 60 + gap;
+
+                const newNode = model().createNode({ 
+                    shapeType, 
+                    swimlane: node.swimlane, 
+                    swimlaneColumn: node.swimlaneColumn,
+                    x: nx,
+                    y: ny
+                });
+
+                // Update parent to connect to new node in the chosen direction
+                const updates = {};
+                if (node.shapeType === 'decision') {
+                    if (!node.yesPath) {
+                        updates.yesPath = newNode.stepId;
+                        updates.yesFlowDir = this._activeDirection;
+                    } else if (!node.noPath) {
+                        updates.noPath = newNode.stepId;
+                        updates.noFlowDir = this._activeDirection;
+                    } else {
+                        bus().emit('toast', 'warning', 'Decision already has both paths connected.');
+                        menu.classList.add('hidden');
+                        return;
+                    }
+                } else {
+                    updates.nextStep = newNode.stepId;
+                    updates.layoutFlow = this._activeDirection;
+                }
+
+                // Add to state
+                state().addNode(newNode);
+                state().updateNode(node.stepId, updates);
+
+                menu.classList.add('hidden');
+                bus().emit('toast', 'success', 'Shape added and connected');
+                
+                // Select new shape and layout
+                setTimeout(() => {
+                    if (window.PMB.SelectionManager) {
+                        window.PMB.SelectionManager.selectMultiple([newNode.stepId]);
+                    }
+                    renderer().autoLayout(false, true);
+                }, 50);
+            });
+        }
+    };
+
+    window.PMB = window.PMB || {};
+    window.PMB.QuickAdd = QuickAdd;
 })();
 
 </script>
@@ -9525,6 +9830,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
         PMB.DragDropManager.init();
         PMB.TextEditor.init();
         PMB.ContextMenu.init();
+        if (PMB.QuickAdd) PMB.QuickAdd.init();
 
         // Try to restore auto-save
         const hasExcelDb = localStorage.getItem('pmb_has_file_handle') === 'true' || localStorage.getItem('pmb_active_account');

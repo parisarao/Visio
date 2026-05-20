@@ -51,13 +51,44 @@
             const def = SHAPE_DEFAULTS[type] || SHAPE_DEFAULTS.process;
             const settings = (window.PMB && window.PMB.StateManager) ? window.PMB.StateManager.getSettings() : {};
 
+            let baseName = overrides?.stepName || 'New Step';
+            let uniqueName = baseName;
+            let newX = overrides?.x !== undefined ? overrides.x : 40;
+            let newY = overrides?.y !== undefined ? overrides.y : 40;
+
+            if (window.PMB && window.PMB.StateManager && overrides?.x === undefined) {
+                const existingNodes = window.PMB.StateManager.getNodes() || [];
+                let counter = 1;
+                while (existingNodes.some(n => n.stepName === uniqueName)) {
+                    uniqueName = `${baseName} (${counter})`;
+                    counter++;
+                }
+
+                // Find non-overlapping spot
+                const isOccupied = (tx, ty) => {
+                    return existingNodes.some(n => {
+                        const nx = n.x || 0;
+                        const ny = n.y || 0;
+                        const nw = n.width || 140;
+                        const nh = n.height || 60;
+                        return !(tx + 140 <= nx || tx >= nx + nw || ty + 60 <= ny || ty >= ny + nh);
+                    });
+                };
+                while (isOccupied(newX, newY)) {
+                    newX += 20;
+                    newY += 20;
+                }
+            }
+
             return {
                 stepId: overrides?.stepId || this.generateId('S'),
-                stepName: overrides?.stepName || 'New Step',
+                stepName: uniqueName,
                 description: overrides?.description || '',
                 shapeType: type,
                 swimlane: overrides?.swimlane || '',
                 swimlaneColumn: overrides?.swimlaneColumn || '',
+                x: newX,
+                y: newY,
                 nextStep: overrides?.nextStep || '',
                 yesPath: overrides?.yesPath || '',
                 noPath: overrides?.noPath || '',

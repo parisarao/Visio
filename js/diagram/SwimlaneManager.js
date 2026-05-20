@@ -98,7 +98,7 @@
             const settings = state().getSettings() || {};
             const rowHeaderW = this.LANE_HEADER_WIDTH;
             const colHeaderH = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
             const gap = 2;
 
             const colWidths = columns.map(col => {
@@ -228,9 +228,10 @@
         },
 
         _renderHorizontal(lanes, nodes, layer, bounds) {
+            const settings = state().getSettings() || {};
             let currentY = 20;
             const headerW = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
 
             // Calculate total width from nodes
             let maxX = 400;
@@ -240,7 +241,7 @@
             });
             const totalWidth = maxX + headerW + padding;
 
-            const settings = state().getSettings() || {};
+            // settings are already read at top
 
             // Dynamic diagram title header at the top
             const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
@@ -346,9 +347,10 @@
         },
 
         _renderVertical(lanes, nodes, layer, bounds) {
+            const settings = state().getSettings() || {};
             let currentX = 20;
             const headerH = this.LANE_HEADER_WIDTH;
-            const padding = this.LANE_PADDING;
+            const padding = settings.swimlanePadding !== undefined ? settings.swimlanePadding : this.LANE_PADDING;
 
             // Calculate total width of all vertical lanes combined
             let totalWidth = 0;
@@ -367,7 +369,7 @@
                 totalWidth += laneWidth + 2;
             });
 
-            const settings = state().getSettings() || {};
+            // settings already read at top
 
             let startY = 10;
             const titleText = window.PMB.StateManager ? window.PMB.StateManager.getTitle() : '';
