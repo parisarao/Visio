@@ -76,14 +76,61 @@
             exportBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 exportDrop.classList.toggle('hidden');
+                if (importDrop) importDrop.classList.add('hidden');
             });
-            document.addEventListener('click', () => exportDrop.classList.add('hidden'));
+            
+            // Import dropdown
+            const importBtn = document.getElementById('btn-import');
+            const importDrop = document.getElementById('import-dropdown');
+            if (importBtn && importDrop) {
+                importBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    importDrop.classList.toggle('hidden');
+                    exportDrop.classList.add('hidden');
+                });
+            }
+
+            document.addEventListener('click', () => {
+                exportDrop.classList.add('hidden');
+                if (importDrop) importDrop.classList.add('hidden');
+            });
 
             document.getElementById('btn-export-pdf').addEventListener('click', () => exporters().exportPDF());
             document.getElementById('btn-export-png').addEventListener('click', () => exporters().exportPNG());
             document.getElementById('btn-export-jpeg').addEventListener('click', () => exporters().exportJPEG());
             document.getElementById('btn-export-svg').addEventListener('click', () => exporters().exportSVG());
             document.getElementById('btn-export-json').addEventListener('click', () => storage().saveToFile());
+            
+            const btnBulkExport = document.getElementById('btn-export-bulk-pdf');
+            if (btnBulkExport) {
+                btnBulkExport.addEventListener('click', () => {
+                    if (window.PMB.Exporters && window.PMB.Exporters.showBulkExportModal) {
+                        window.PMB.Exporters.showBulkExportModal();
+                    }
+                });
+            }
+
+            const btnImportJson = document.getElementById('btn-import-json');
+            if (btnImportJson) {
+                btnImportJson.addEventListener('click', async () => {
+                    const loaded = await storage().openFile();
+                    if (loaded && window.PMB.ExcelRepositoryManager && window.PMB.ExcelRepositoryManager.isRepositoryActive()) {
+                        if (confirm('JSON loaded. Would you like to save this new diagram into your connected Excel Database?')) {
+                            // Automatically grab new title for activity name
+                            const title = state().getTitle() || 'Imported Activity';
+                            window.PMB.ExcelRepositoryManager.activeActivity = title;
+                            // Optionally, user might need to set Account/Process if it's not set
+                            if (!window.PMB.ExcelRepositoryManager.activeAccount) {
+                                window.PMB.ExcelRepositoryManager.activeAccount = 'Imported Account';
+                            }
+                            if (!window.PMB.ExcelRepositoryManager.activeProcess) {
+                                window.PMB.ExcelRepositoryManager.activeProcess = 'Imported Process';
+                            }
+                            window.PMB.ExcelRepositoryManager.saveActiveStateToWorkbook();
+                        }
+                    }
+                });
+            }
 
             // Zoom
             document.getElementById('btn-zoom-in').addEventListener('click', () => renderer().zoomIn());

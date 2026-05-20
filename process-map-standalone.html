@@ -827,7 +827,28 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     <button id="btn-export-svg" class="dropdown-item">Export as SVG</button>
                     <div class="dropdown-divider"></div>
                     <button id="btn-export-json" class="dropdown-item">Export JSON Data</button>
+                    <div class="dropdown-divider"></div>
+                    <button id="btn-export-bulk-pdf" class="dropdown-item" style="font-weight: 600; color: #107c41;">Bulk Export PDF (All)</button>
                 </div>
+            </div>
+
+            <!-- Import Dropdown -->
+            <div class="toolbar-group">
+                <button id="btn-import" class="toolbar-btn toolbar-btn-dropdown" title="Import">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="import-dropdown" class="dropdown-menu hidden">
+                    <button id="btn-import-json" class="dropdown-item">Import JSON Data</button>
+                </div>
+            </div>
+
+            <!-- Excel Connection Status Indicator -->
+            <div id="excel-status-indicator" class="toolbar-btn" style="cursor: default; padding: 4px 8px; background: rgba(255,0,0,0.05); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px;" title="Excel Database Status">
+                <div style="width:8px; height:8px; border-radius:50%; background:#dc2626;" id="excel-status-dot"></div>
+                <span id="excel-status-text">Excel Disconnected</span>
+            </div>
             </div>
             <div class="toolbar-divider"></div>
             <select id="theme-select" class="toolbar-select" title="Theme">
@@ -5067,7 +5088,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
 
                             const pngData = canvas.toDataURL('image/png');
                             doc.addImage(pngData, 'PNG', 20, 20, width, height);
-                            doc.save('process-map.pdf');
+                            doc.save(this._getSafeFilename('.pdf'));
                             resolve();
                         } catch (err) {
                             reject(err);
@@ -5121,7 +5142,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     // Draw image
                     ctx.drawImage(img, 0, 0, canvasW, canvasH);
                     canvas.toBlob(blob2 => {
-                        storage().downloadBlob(blob2, 'process-map.png');
+                        storage().downloadBlob(blob2, this._getSafeFilename('.png'));
                         bus().emit('toast', 'success', 'PNG exported successfully');
                     }, 'image/png');
                     URL.revokeObjectURL(url);
@@ -5164,7 +5185,7 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                     // Draw image
                     ctx.drawImage(img, 0, 0, canvasW, canvasH);
                     canvas.toBlob(blob2 => {
-                        storage().downloadBlob(blob2, 'process-map.jpg');
+                        storage().downloadBlob(blob2, this._getSafeFilename('.jpg'));
                         bus().emit('toast', 'success', 'JPEG exported successfully');
                     }, 'image/jpeg', 0.95);
                     URL.revokeObjectURL(url);
@@ -5182,11 +5203,430 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
                 const serializer = new XMLSerializer();
                 let svgStr = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(clone);
                 const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-                storage().downloadBlob(blob, 'process-map.svg');
+                storage().downloadBlob(blob, this._getSafeFilename('.svg'));
                 bus().emit('toast', 'success', 'SVG exported successfully');
             } catch (err) {
                 console.error('[Exporters] SVG export error:', err);
                 bus().emit('toast', 'error', 'SVG export failed: ' + err.message);
+            }
+        },
+
+        _getSafeFilename(ext) {
+            let title = state().getTitle() || 'Process Map';
+            title = title.replace(/[^a-z0-9 -]/gi, '_');
+            return `${title}${ext}`;
+        },
+
+        showBulkExportModal() {
+            if (!window.PMB.ExcelRepositoryManager || !window.PMB.ExcelRepositoryManager.isRepositoryActive()) {
+                bus().emit('toast', 'warning', 'Please connect an Excel Repository first to use Bulk Export.');
+                return;
+            }
+
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalEl = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalFooter = document.getElementById('modal-footer');
+
+            if (!modalOverlay || !modalBody) return;
+
+            // Expand modal to fit premium two-column filter & cards layout beautifully
+            if (modalEl) {
+                modalEl.style.maxWidth = '720px';
+                modalEl.style.width = '95%';
+                modalEl.style.transition = 'all var(--transition)';
+            }
+
+            modalTitle.textContent = 'Bulk Export Process Maps';
+
+            // Extract all unique combinations from the connected repository
+            const repoData = window.PMB.ExcelRepositoryManager._stepsData || [];
+            const uniqueMaps = new Map(); // key -> {acc, proc, act}
+            const accountsSet = new Set();
+            const processMapByAcc = {}; 
+            
+            repoData.forEach(row => {
+                const acc = (row.Account || '').trim();
+                const proc = (row.Process || '').trim();
+                const act = (row.Activity || '').trim();
+                if (acc && proc && act) {
+                    const key = `${acc}|${proc}|${act}`;
+                    if (!uniqueMaps.has(key)) {
+                        uniqueMaps.set(key, { acc, proc, act });
+                        accountsSet.add(acc);
+                        if (!processMapByAcc[acc]) processMapByAcc[acc] = new Set();
+                        processMapByAcc[acc].add(proc);
+                    }
+                }
+            });
+
+            if (uniqueMaps.size === 0) {
+                modalBody.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-secondary);">No process maps found in the repository.</p>';
+                modalOverlay.classList.remove('hidden');
+                return;
+            }
+
+            const mapsList = Array.from(uniqueMaps.values()).sort((a, b) => a.acc.localeCompare(b.acc) || a.proc.localeCompare(b.proc) || a.act.localeCompare(b.act));
+            const accounts = Array.from(accountsSet).sort();
+
+            modalBody.innerHTML = `
+                <div class="bulk-export-container" style="display: flex; flex-direction: column; gap: 16px; color: var(--text-primary);">
+                    <!-- Description & Status -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">Select the process maps you want to combine into a single multi-page PDF.</span>
+                        <span style="background: rgba(16, 124, 65, 0.1); color: #107c41; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                            Connected Repository
+                        </span>
+                    </div>
+                    
+                    <!-- Dropdown Filters Card -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Account Filter</label>
+                            <div style="position: relative;">
+                                <select id="bulk-filter-acc" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none; font-size: 13px; transition: border-color var(--transition); box-shadow: var(--shadow-sm); appearance: none;">
+                                    <option value="ALL">📋 -- All Accounts --</option>
+                                    ${accounts.map(a => `<option value="${a}">${a}</option>`).join('')}
+                                </select>
+                                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); font-size: 9px;">▼</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Process Filter</label>
+                            <div style="position: relative;">
+                                <select id="bulk-filter-proc" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none; font-size: 13px; transition: border-color var(--transition); box-shadow: var(--shadow-sm); appearance: none;">
+                                    <option value="ALL">📁 -- All Processes --</option>
+                                </select>
+                                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); font-size: 9px;">▼</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions & Counters -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; font-size: 12px;">
+                        <div>
+                            Selected: <span id="bulk-count-selected" style="font-weight: 600; color: #107c41; background: rgba(16, 124, 65, 0.08); padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 6px;">0</span>
+                            <span style="color: var(--text-muted);">Matches:</span> <span id="bulk-count-visible" style="font-weight: 600;">0</span> / <span style="font-weight: 600;">${mapsList.length}</span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button id="btn-export-select-all" class="btn-secondary btn-sm" style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 11px; font-weight: 500;">
+                                Select Visible
+                            </button>
+                            <button id="btn-export-select-none" class="btn-secondary btn-sm" style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 11px; font-weight: 500;">
+                                Clear Visible
+                            </button>
+                            <button id="btn-export-select-all-repo" class="btn-secondary btn-sm" style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 11px; font-weight: 500; border-color: var(--accent); color: var(--accent);">
+                                Select All (${mapsList.length})
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable checklist of maps -->
+                    <div id="bulk-export-list-container" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-primary);">
+                    </div>
+                </div>
+            `;
+
+            modalFooter.innerHTML = `
+                <button id="btn-modal-cancel" class="toolbar-btn" style="border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-secondary);">Cancel</button>
+                <button id="btn-modal-export" class="toolbar-btn" style="background:#107c41; color:#fff; border-color:#107c41; font-weight:600; border-radius:var(--radius-sm); display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Export Selected</span>
+                </button>
+            `;
+
+            modalOverlay.classList.remove('hidden');
+
+            const filterAcc = document.getElementById('bulk-filter-acc');
+            const filterProc = document.getElementById('bulk-filter-proc');
+            const listContainer = document.getElementById('bulk-export-list-container');
+            const btnExport = document.getElementById('btn-modal-export');
+            
+            // Keep track of user's checked items globally across filters
+            const selectedSet = new Set();
+            mapsList.forEach((_, idx) => selectedSet.add(idx)); // default all selected
+
+            // Update row background & border highlights based on checked status
+            const updateRowStates = () => {
+                document.querySelectorAll('.bulk-item-row').forEach(row => {
+                    const idx = parseInt(row.getAttribute('data-idx'), 10);
+                    const chk = row.querySelector('.export-map-chk');
+                    if (chk) {
+                        const isChecked = selectedSet.has(idx);
+                        chk.checked = isChecked;
+                        row.style.background = isChecked ? 'rgba(16, 124, 65, 0.04)' : 'var(--bg-secondary)';
+                        row.style.borderColor = isChecked ? 'rgba(16, 124, 65, 0.25)' : 'var(--border-light)';
+                    }
+                });
+            };
+
+            const updateCounters = () => {
+                const countSelected = selectedSet.size;
+                const countVisible = document.querySelectorAll('.bulk-item-row').length;
+                
+                document.getElementById('bulk-count-selected').textContent = countSelected;
+                document.getElementById('bulk-count-visible').textContent = countVisible;
+                
+                if (btnExport) {
+                    btnExport.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export Selected (${countSelected})</span>
+                    `;
+                    if (countSelected === 0) {
+                        btnExport.disabled = true;
+                        btnExport.style.opacity = '0.5';
+                        btnExport.style.cursor = 'not-allowed';
+                    } else {
+                        btnExport.disabled = false;
+                        btnExport.style.opacity = '1';
+                        btnExport.style.cursor = 'pointer';
+                    }
+                }
+
+                updateRowStates();
+            };
+
+            const renderList = () => {
+                const accVal = filterAcc.value;
+                const procVal = filterProc.value;
+                
+                let html = '';
+                let countVisible = 0;
+                mapsList.forEach((map, idx) => {
+                    const matchAcc = accVal === 'ALL' || map.acc === accVal;
+                    const matchProc = procVal === 'ALL' || map.proc === procVal;
+                    
+                    if (matchAcc && matchProc) {
+                        countVisible++;
+                        const isChecked = selectedSet.has(idx);
+                        html += `
+                            <div class="bulk-item-row" data-idx="${idx}" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-sm); transition: all var(--transition); cursor: pointer;">
+                                <input type="checkbox" id="chk-export-${idx}" class="export-map-chk" data-idx="${idx}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #107c41; cursor: pointer; flex-shrink: 0; pointer-events: none;">
+                                
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; pointer-events: none;">
+                                    <span style="font-weight: 600; font-size: 13px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                        ${map.act}
+                                    </span>
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <span style="font-size: 10px; background: var(--bg-tertiary); color: var(--text-secondary); padding: 1px 6px; border-radius: 4px; font-weight: 500; border: 1px solid var(--border);">
+                                            🏢 ${map.acc}
+                                        </span>
+                                        <span style="font-size: 10px; background: var(--accent-subtle); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 500; border: 1px solid rgba(99,102,241,0.2);">
+                                            ⚙️ ${map.proc}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (countVisible === 0) {
+                    html = '<div style="font-size:12px; color:var(--text-muted); padding:20px; text-align:center;">No maps match the selected filters.</div>';
+                }
+                
+                listContainer.innerHTML = html;
+                updateCounters();
+            };
+
+            const updateProcessDropdown = () => {
+                const accVal = filterAcc.value;
+                let procs = [];
+                if (accVal === 'ALL') {
+                    const allProcs = new Set();
+                    Object.values(processMapByAcc).forEach(pSet => pSet.forEach(p => allProcs.add(p)));
+                    procs = Array.from(allProcs).sort();
+                } else {
+                    procs = Array.from(processMapByAcc[accVal] || []).sort();
+                }
+
+                filterProc.innerHTML = '<option value="ALL">📁 -- All Processes --</option>' + 
+                    procs.map(p => `<option value="${p}">${p}</option>`).join('');
+            };
+
+            // Setup Event Listeners
+            filterAcc.addEventListener('change', () => {
+                updateProcessDropdown();
+                renderList();
+            });
+
+            filterProc.addEventListener('change', () => {
+                renderList();
+            });
+
+            // Toggling selection by clicking the row card directly makes a premium user experience
+            listContainer.addEventListener('click', (e) => {
+                const row = e.target.closest('.bulk-item-row');
+                if (!row) return;
+                
+                const idx = parseInt(row.getAttribute('data-idx'), 10);
+                if (selectedSet.has(idx)) {
+                    selectedSet.delete(idx);
+                } else {
+                    selectedSet.add(idx);
+                }
+                updateCounters();
+            });
+
+            // Select all currently visible matching items
+            document.getElementById('btn-export-select-all').addEventListener('click', () => {
+                document.querySelectorAll('.bulk-item-row').forEach(row => {
+                    const idx = parseInt(row.getAttribute('data-idx'), 10);
+                    selectedSet.add(idx);
+                });
+                updateCounters();
+            });
+
+            // Clear selection of currently visible matching items
+            document.getElementById('btn-export-select-none').addEventListener('click', () => {
+                document.querySelectorAll('.bulk-item-row').forEach(row => {
+                    const idx = parseInt(row.getAttribute('data-idx'), 10);
+                    selectedSet.delete(idx);
+                });
+                updateCounters();
+            });
+
+            // Select all repository items
+            document.getElementById('btn-export-select-all-repo').addEventListener('click', () => {
+                mapsList.forEach((_, idx) => selectedSet.add(idx));
+                updateCounters();
+            });
+
+            // Initial render & populate
+            updateProcessDropdown();
+            renderList();
+
+            const btnCancel = document.getElementById('btn-modal-cancel');
+            const closeModal = () => {
+                modalOverlay.classList.add('hidden');
+                // Restore original modal sizes
+                if (modalEl) {
+                    modalEl.style.maxWidth = '';
+                    modalEl.style.width = '';
+                }
+            };
+
+            btnCancel.addEventListener('click', closeModal);
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+
+            btnExport.addEventListener('click', async () => {
+                const selectedIndexes = Array.from(selectedSet);
+                if (selectedIndexes.length === 0) {
+                    alert('Please select at least one process map to export.');
+                    return;
+                }
+
+                // Sort the selected indexes so the PDF is in alphabetical order
+                selectedIndexes.sort((a, b) => a - b);
+                const mapsToExport = selectedIndexes.map(idx => mapsList[idx]);
+                closeModal();
+                await this._executeBulkExport(mapsToExport);
+            });
+        },
+
+        async _executeBulkExport(mapsToExport) {
+            try {
+                bus().emit('toast', 'info', `Starting bulk export of ${mapsToExport.length} maps...`);
+                const { jsPDF } = window.jspdf || {};
+                if (!jsPDF) throw new Error('jsPDF library is not loaded');
+
+                // Remember current state to restore later
+                const originalAccount = window.PMB.ExcelRepositoryManager.activeAccount;
+                const originalProcess = window.PMB.ExcelRepositoryManager.activeProcess;
+                const originalActivity = window.PMB.ExcelRepositoryManager.activeActivity;
+
+                let doc = null;
+
+                for (let i = 0; i < mapsToExport.length; i++) {
+                    const map = mapsToExport[i];
+                    bus().emit('toast', 'info', `Exporting (${i+1}/${mapsToExport.length}): ${map.act}...`);
+                    
+                    // Load the map into the canvas
+                    window.PMB.ExcelRepositoryManager.loadDiagramFromWorkbook(map.acc, map.proc, map.act);
+                    
+                    // Wait for rendering to complete (need a small delay for ELK layout and DOM updates)
+                    await new Promise(r => setTimeout(r, 800));
+
+                    const { clone, width, height } = this._prepareExportSVG();
+                    const scale = 2;
+                    const canvasW = Math.max(1, Math.round(width * scale));
+                    const canvasH = Math.max(1, Math.round(height * scale));
+
+                    clone.setAttribute('width', canvasW);
+                    clone.setAttribute('height', canvasH);
+
+                    const serializer = new XMLSerializer();
+                    const svgStr = serializer.serializeToString(clone);
+                    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+
+                    await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            try {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = canvasW;
+                                canvas.height = canvasH;
+                                const ctx = canvas.getContext('2d');
+
+                                ctx.fillStyle = '#ffffff';
+                                ctx.fillRect(0, 0, canvasW, canvasH);
+                                ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+                                // Leave room for header
+                                const pdfWidth = width + 40;
+                                const pdfHeight = height + 80; // Extra height for header/footer
+
+                                if (!doc) {
+                                    doc = new jsPDF({
+                                        orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+                                        unit: 'pt',
+                                        format: [pdfWidth, pdfHeight]
+                                    });
+                                } else {
+                                    doc.addPage([pdfWidth, pdfHeight], pdfWidth > pdfHeight ? 'landscape' : 'portrait');
+                                }
+
+                                // Add Header text
+                                doc.setFontSize(14);
+                                doc.setTextColor(0, 0, 0);
+                                doc.text(`${map.acc} - ${map.proc}`, 20, 30);
+                                doc.setFontSize(18);
+                                doc.text(map.act, 20, 50);
+
+                                const pngData = canvas.toDataURL('image/png');
+                                doc.addImage(pngData, 'PNG', 20, 60, width, height);
+                                resolve();
+                            } catch (err) {
+                                reject(err);
+                            } finally {
+                                URL.revokeObjectURL(url);
+                            }
+                        };
+                        img.onerror = () => {
+                            URL.revokeObjectURL(url);
+                            reject(new Error(`Could not render diagram for PDF export: ${map.act}`));
+                        };
+                        img.src = url;
+                    });
+                }
+
+                // Restore original state
+                if (originalAccount && originalProcess && originalActivity) {
+                    window.PMB.ExcelRepositoryManager.loadDiagramFromWorkbook(originalAccount, originalProcess, originalActivity);
+                }
+
+                // Save combined PDF
+                const today = new Date().toISOString().split('T')[0];
+                doc.save(`Bulk_Process_Export_${today}.pdf`);
+                bus().emit('toast', 'success', 'Bulk PDF exported successfully!');
+
+            } catch (err) {
+                console.error('[Exporters] Bulk PDF export error:', err);
+                bus().emit('toast', 'error', 'Bulk PDF export failed: ' + err.message);
             }
         }
     };
@@ -5276,14 +5716,61 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
             exportBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 exportDrop.classList.toggle('hidden');
+                if (importDrop) importDrop.classList.add('hidden');
             });
-            document.addEventListener('click', () => exportDrop.classList.add('hidden'));
+            
+            // Import dropdown
+            const importBtn = document.getElementById('btn-import');
+            const importDrop = document.getElementById('import-dropdown');
+            if (importBtn && importDrop) {
+                importBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    importDrop.classList.toggle('hidden');
+                    exportDrop.classList.add('hidden');
+                });
+            }
+
+            document.addEventListener('click', () => {
+                exportDrop.classList.add('hidden');
+                if (importDrop) importDrop.classList.add('hidden');
+            });
 
             document.getElementById('btn-export-pdf').addEventListener('click', () => exporters().exportPDF());
             document.getElementById('btn-export-png').addEventListener('click', () => exporters().exportPNG());
             document.getElementById('btn-export-jpeg').addEventListener('click', () => exporters().exportJPEG());
             document.getElementById('btn-export-svg').addEventListener('click', () => exporters().exportSVG());
             document.getElementById('btn-export-json').addEventListener('click', () => storage().saveToFile());
+            
+            const btnBulkExport = document.getElementById('btn-export-bulk-pdf');
+            if (btnBulkExport) {
+                btnBulkExport.addEventListener('click', () => {
+                    if (window.PMB.Exporters && window.PMB.Exporters.showBulkExportModal) {
+                        window.PMB.Exporters.showBulkExportModal();
+                    }
+                });
+            }
+
+            const btnImportJson = document.getElementById('btn-import-json');
+            if (btnImportJson) {
+                btnImportJson.addEventListener('click', async () => {
+                    const loaded = await storage().openFile();
+                    if (loaded && window.PMB.ExcelRepositoryManager && window.PMB.ExcelRepositoryManager.isRepositoryActive()) {
+                        if (confirm('JSON loaded. Would you like to save this new diagram into your connected Excel Database?')) {
+                            // Automatically grab new title for activity name
+                            const title = state().getTitle() || 'Imported Activity';
+                            window.PMB.ExcelRepositoryManager.activeActivity = title;
+                            // Optionally, user might need to set Account/Process if it's not set
+                            if (!window.PMB.ExcelRepositoryManager.activeAccount) {
+                                window.PMB.ExcelRepositoryManager.activeAccount = 'Imported Account';
+                            }
+                            if (!window.PMB.ExcelRepositoryManager.activeProcess) {
+                                window.PMB.ExcelRepositoryManager.activeProcess = 'Imported Process';
+                            }
+                            window.PMB.ExcelRepositoryManager.saveActiveStateToWorkbook();
+                        }
+                    }
+                });
+            }
 
             // Zoom
             document.getElementById('btn-zoom-in').addEventListener('click', () => renderer().zoomIn());
@@ -8635,6 +9122,18 @@ input, select, textarea, button { font-family: var(--font); font-size: 13px; }
         // ==========================================
         parseWorkbook(wb) {
             this._workbook = wb;
+
+            // Update UI Connection Status
+            const statusInd = document.getElementById('excel-status-indicator');
+            const statusDot = document.getElementById('excel-status-dot');
+            const statusText = document.getElementById('excel-status-text');
+            if (statusInd && statusDot && statusText) {
+                statusInd.style.background = 'rgba(16,124,65,0.05)';
+                statusInd.style.color = '#107c41';
+                statusInd.style.borderColor = 'rgba(16,124,65,0.3)';
+                statusDot.style.background = '#107c41';
+                statusText.textContent = `Connected: ${this._fileName || 'Excel Database'}`;
+            }
 
             // Load sheets or fallback to blank tables
             this._stepsData = wb.Sheets[SHEET_STEPS] ? XLSX.utils.sheet_to_json(wb.Sheets[SHEET_STEPS]) : [];

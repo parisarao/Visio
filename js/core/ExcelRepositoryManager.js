@@ -440,6 +440,18 @@
         parseWorkbook(wb) {
             this._workbook = wb;
 
+            // Update UI Connection Status
+            const statusInd = document.getElementById('excel-status-indicator');
+            const statusDot = document.getElementById('excel-status-dot');
+            const statusText = document.getElementById('excel-status-text');
+            if (statusInd && statusDot && statusText) {
+                statusInd.style.background = 'rgba(16,124,65,0.05)';
+                statusInd.style.color = '#107c41';
+                statusInd.style.borderColor = 'rgba(16,124,65,0.3)';
+                statusDot.style.background = '#107c41';
+                statusText.textContent = `Connected: ${this._fileName || 'Excel Database'}`;
+            }
+
             // Load sheets or fallback to blank tables
             this._stepsData = wb.Sheets[SHEET_STEPS] ? XLSX.utils.sheet_to_json(wb.Sheets[SHEET_STEPS]) : [];
             this._lanesData = wb.Sheets[SHEET_LANES] ? XLSX.utils.sheet_to_json(wb.Sheets[SHEET_LANES]) : [];
