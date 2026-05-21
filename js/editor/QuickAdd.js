@@ -146,7 +146,7 @@
                 if (!node) return;
 
                 const shapeType = shapeSelect.value;
-                const gap = (state().getSettings() && state().getSettings().nodeSpacing !== undefined) ? state().getSettings().nodeSpacing : 80;
+                const gap = (state().getSettings() && state().getSettings().nodeSpacing !== undefined) ? state().getSettings().nodeSpacing : 30;
                 let nx = node.x || 0;
                 let ny = node.y || 0;
                 if (this._activeDirection === 'right') nx += (node.width || 140) + gap;

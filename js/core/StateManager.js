@@ -23,7 +23,7 @@
                     gridSnap: true,
                     gridSize: 20,
                     laneOrientation: 'horizontal',
-                    nodeSpacing: 80,
+                    nodeSpacing: 30,
                     flowDirection: 'horizontal',
                     defaultShapeBg: 'transparent',
                     defaultShapeFont: '#000000',

@@ -209,8 +209,8 @@
                     <div class="prop-group">
                         <label class="prop-label">Min Shape Gap</label>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input id="layout-spacing" class="prop-input" type="range" min="30" max="200" value="80" title="Adjust gap between shapes" style="flex:1;">
-                            <span id="layout-spacing-val" style="font-size:11px; color:var(--text-secondary); min-width:32px; font-weight:600;">80px</span>
+                            <input id="layout-spacing" class="prop-input" type="range" min="30" max="200" value="30" title="Adjust gap between shapes" style="flex:1;">
+                            <span id="layout-spacing-val" style="font-size:11px; color:var(--text-secondary); min-width:32px; font-weight:600;">30px</span>
                         </div>
                     </div>
                     <div class="prop-group" style="margin-top:8px;">
@@ -223,7 +223,7 @@
                     </div>
                     <div class="prop-group" style="margin-top:8px;">
                         <label class="prop-label" style="display:flex; align-items:center; gap:6px;">
-                            <input type="checkbox" id="layout-auto-lock" title="Prevent automatic layout on changes">
+                            <input type="checkbox" id="layout-auto-lock" title="Prevent automatic layout on changes" checked>
                             Lock Auto-Layout
                         </label>
                     </div>
@@ -403,7 +403,7 @@
                     </div>
                     <div class="prop-group">
                         <label class="prop-label">Step Name</label>
-                        <input id="prop-step-name" class="prop-input" type="text">
+                        <textarea id="prop-step-name" class="prop-textarea" rows="2"></textarea>
                     </div>
                     <div class="prop-group">
                         <label class="prop-label">Description</label>
@@ -483,9 +483,18 @@
                         <input id="prop-step-spacing" class="prop-input" type="number" min="10" max="400" placeholder="Use Global">
                     </div>
                     <div class="prop-row">
-                        <div class="prop-group prop-half">
-                            <label class="prop-label">Next Step</label>
-                            <select id="prop-next-step" class="prop-input"></select>
+                        <div class="prop-group prop-full" style="width: 100%;">
+                            <label class="prop-label">Next Step(s)</label>
+                            <div id="next-steps-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; min-height: 28px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px; background: var(--bg-tertiary); align-items: center;">
+                                <!-- Tags are rendered dynamically -->
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <select id="prop-next-step" class="prop-input" style="flex:1; min-width:0;"></select>
+                                <button id="btn-clear-next-steps" type="button" title="Clear all connections" style="padding: 4px 10px; flex-shrink:0; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer; font-weight: 500; font-size: 11px;">Clear</button>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                                Select a shape from the dropdown to add connection. Connect to multiple shapes!
+                            </div>
                         </div>
                     </div>
                     <div class="prop-row">
@@ -650,6 +659,7 @@
             <span class="grid-panel-title">Process Data Table</span>
             <div class="grid-panel-actions">
                 <button id="btn-excel-import" class="btn-secondary btn-sm btn-excel-import" title="Paste steps directly from Excel">📋 Paste from Excel</button>
+                <button id="btn-ai-prompt" class="btn-secondary btn-sm btn-ai-prompt" title="Get AI Prompt to convert flowchart images to process data">🤖 AI Flowchart Prompt</button>
                 <button id="btn-add-row" class="btn-secondary btn-sm">+ Add Step</button>
                 <button id="btn-delete-row" class="btn-secondary btn-sm btn-danger">Delete Selected</button>
                 <button id="btn-toggle-grid" class="panel-collapse-btn" title="Toggle Table">▼</button>

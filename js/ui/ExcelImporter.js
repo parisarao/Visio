@@ -27,6 +27,8 @@
         { value: 'noLabel', text: 'No Label' },
         { value: 'width', text: 'Width' },
         { value: 'height', text: 'Height' },
+        { value: 'x', text: 'X Position' },
+        { value: 'y', text: 'Y Position' },
         { value: 'icon', text: 'Icon' },
         { value: 'notes', text: 'Notes' }
     ];
@@ -63,6 +65,7 @@
         }
 
         showModal(preloadedText = '') {
+            this._swimlaneOrder = null; // Reset custom swimlane order sequence for new import session
             const overlay = document.getElementById('modal-overlay');
             const titleEl = document.getElementById('modal-title');
             const bodyEl = document.getElementById('modal-body');
@@ -103,9 +106,22 @@
                         </div>
                         <textarea id="excel-paste-textarea" class="excel-paste-textarea" autofocus></textarea>
                     </div>
+                    
+                    <div style="font-size:12px; line-height:1.5; color:var(--text-primary); background:linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(6, 182, 212, 0.08)); padding:12px 14px; border-radius:var(--radius); border:1px solid rgba(79, 70, 229, 0.2); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="flex:1;">
+                            <p style="font-weight:700; margin-bottom:3px; color:#4f46e5; display:flex; align-items:center; gap:6px; margin-top:0;">
+                                <span>🤖</span> Convert Flowchart Image using AI
+                            </p>
+                            <p style="color:var(--text-secondary); font-size:11.5px; margin:0; line-height:1.4;">
+                                Have a flowchart image or drawing? Use our optimized AI prompt to convert it to a copy-pasteable spreadsheet format complete with shape types, branching, and layout coordinates!
+                            </p>
+                        </div>
+                        <button id="btn-excel-show-ai-prompt" class="btn-primary" style="background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white; border: none; font-size: 11px; padding: 6px 14px; white-space: nowrap; cursor: pointer; border-radius: var(--radius); font-weight: 600; transition: transform 0.15s ease;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">Get AI Prompt</button>
+                    </div>
+
                     <div style="font-size:12px; line-height:1.5; color:var(--text-secondary); background:var(--bg-tertiary); padding:10px 12px; border-radius:var(--radius); border:1px solid var(--border)">
-                        <p style="font-weight:600; margin-bottom:4px; color:var(--text-primary);">💡 Column Headers Auto-matching:</p>
-                        <p>If your Excel sheet includes headers like <strong>Step ID</strong>, <strong>Step Name</strong>, <strong>Description</strong>, <strong>Shape</strong>, <strong>Swimlane</strong>, and <strong>Next Step</strong>, the system will automatically map the columns correctly!</p>
+                        <p style="font-weight:600; margin-bottom:4px; color:var(--text-primary); margin-top:0;">💡 Column Headers Auto-matching:</p>
+                        <p style="margin:0;">If your Excel sheet includes headers like <strong>Step ID</strong>, <strong>Step Name</strong>, <strong>Description</strong>, <strong>Shape</strong>, <strong>Swimlane</strong>, <strong>X Position</strong>, <strong>Y Position</strong>, and <strong>Next Step</strong>, the system will automatically map the columns correctly!</p>
                     </div>
                 </div>
             `;
@@ -116,6 +132,7 @@
 
             const textarea = document.getElementById('excel-paste-textarea');
             const pasteBox = document.getElementById('excel-paste-box');
+            const showAiPromptBtn = document.getElementById('btn-excel-show-ai-prompt');
             
             const closeModal = () => {
                 const modal = document.getElementById('modal');
@@ -130,6 +147,12 @@
             // Re-focus textarea when clicking on the visual box
             if (pasteBox && textarea) {
                 pasteBox.addEventListener('click', () => textarea.focus());
+            }
+
+            if (showAiPromptBtn) {
+                showAiPromptBtn.addEventListener('click', () => {
+                    this.showAiPromptModal(true);
+                });
             }
 
             if (textarea) {
@@ -233,6 +256,8 @@
                 connectionLabel: ['conn label', 'connection label', 'conn_label', 'link label', 'line label'],
                 width: ['width', 'w'],
                 height: ['height', 'h'],
+                x: ['x', 'x pos', 'x position', 'xpos', 'x_pos', 'x coordinate', 'xcoordinate'],
+                y: ['y', 'y pos', 'y position', 'ypos', 'y_pos', 'y coordinate', 'ycoordinate'],
                 icon: ['icon'],
                 notes: ['notes', 'comments', 'comment']
             };
@@ -267,6 +292,7 @@
             const hasHeaders = headerResult.hasHeaders;
             const autoMapping = headerResult.columnMapping;
             const dataRows = hasHeaders ? parsed.rows.slice(1) : parsed.rows;
+            const hasXorY = autoMapping.includes('x') || autoMapping.includes('y');
 
             let html = `
                 <div class="excel-mapping-container">
@@ -299,9 +325,22 @@
                                 <span>Create missing swimlanes</span>
                             </label>
                             <label class="excel-checkbox-label">
-                                <input type="checkbox" id="excel-auto-layout" checked />
+                                <input type="checkbox" id="excel-auto-layout" ${hasXorY ? '' : 'checked'} />
                                 <span>Auto-layout diagram</span>
                             </label>
+                        </div>
+                    </div>
+
+                    <!-- Swimlane Ordering Panel (Hidden by default, shown if swimlane is mapped) -->
+                    <div id="excel-swimlane-order-section" style="display:none; flex-direction:column; gap:8px; border:1px solid var(--border); padding:14px; border-radius:var(--radius); background:var(--bg-secondary); margin-bottom:16px; width:100%; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="font-weight:700; font-size:13px; color:#107c41; display:flex; align-items:center; gap:6px;">
+                                <span>↕</span> Swimlane Rendering Order (Top to Bottom)
+                            </span>
+                            <span style="font-size:11px; color:var(--text-muted);">Adjust the vertical sequence of lanes</span>
+                        </div>
+                        <div id="excel-swimlane-order-list" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-tertiary); padding:6px; display:flex; flex-direction:column; gap:4px; width:100%; box-sizing:border-box;">
+                            <!-- Will be populated dynamically -->
                         </div>
                     </div>
 
@@ -380,6 +419,36 @@
                 this._renderPastePhase(bodyEl, footerEl);
             });
 
+            // Dynamically uncheck auto-layout if X or Y columns are selected in mapping dropdowns
+            const recheckAutoLayoutCheckbox = () => {
+                const selectedDropdowns = Array.from(document.querySelectorAll('.excel-map-select')).map(s => s.value);
+                const hasSelectedXorY = selectedDropdowns.includes('x') || selectedDropdowns.includes('y');
+                const checkbox = document.getElementById('excel-auto-layout');
+                if (checkbox) {
+                    checkbox.checked = !hasSelectedXorY;
+                }
+            };
+
+            const triggerSwimlaneUpdate = () => {
+                this._updateSwimlaneOrderList(bodyEl, dataRows, hasHeaders, firstRow);
+            };
+
+            const selectDropdowns = document.querySelectorAll('.excel-map-select');
+            selectDropdowns.forEach(dropdown => {
+                dropdown.addEventListener('change', () => {
+                    recheckAutoLayoutCheckbox();
+                    triggerSwimlaneUpdate();
+                });
+            });
+
+            const strategyRadios = bodyEl.querySelectorAll('input[name="excel-import-mode"]');
+            strategyRadios.forEach(radio => {
+                radio.addEventListener('change', triggerSwimlaneUpdate);
+            });
+
+            // Initial updates
+            triggerSwimlaneUpdate();
+
             const closeModal = () => {
                 const modal = document.getElementById('modal');
                 if (modal) modal.classList.remove('excel-modal');
@@ -392,6 +461,124 @@
             // Execute Import
             document.getElementById('excel-modal-import').addEventListener('click', () => {
                 this._executeImport(dataRows, parsed.colCount, closeModal);
+            });
+        }
+
+        _updateSwimlaneOrderList(bodyEl, dataRows, hasHeaders, firstRow) {
+            const selectEls = Array.from(bodyEl.querySelectorAll('.excel-map-select'));
+            const swimlaneColIdx = selectEls.find(s => s.value === 'swimlane')?.getAttribute('data-col-idx');
+            const orderSection = bodyEl.querySelector('#excel-swimlane-order-section');
+            const orderList = bodyEl.querySelector('#excel-swimlane-order-list');
+            
+            if (!orderSection || !orderList) return;
+
+            let detectedLanes = [];
+            if (swimlaneColIdx !== undefined) {
+                const colIdx = parseInt(swimlaneColIdx, 10);
+                const seen = new Set();
+                dataRows.forEach(row => {
+                    const val = (row[colIdx] || '').trim();
+                    if (val && !seen.has(val.toLowerCase())) {
+                        seen.add(val.toLowerCase());
+                        detectedLanes.push(val);
+                    }
+                });
+            }
+
+            const importModeRadio = bodyEl.querySelector('input[name="excel-import-mode"]:checked');
+            const isReplaceMode = importModeRadio ? importModeRadio.value === 'replace' : false;
+            
+            if (!isReplaceMode) {
+                // Merge in existing swimlanes from state
+                const existingLanes = state().getLanes() || [];
+                const sortedExisting = [...existingLanes].sort((a, b) => (a.order || 0) - (b.order || 0));
+                sortedExisting.forEach(lane => {
+                    const name = (lane.name || '').trim();
+                    if (name && !detectedLanes.some(s => s.toLowerCase() === name.toLowerCase())) {
+                        detectedLanes.push(name);
+                    }
+                });
+            }
+
+            if (detectedLanes.length === 0) {
+                orderSection.style.display = 'none';
+                this._swimlaneOrder = [];
+                return;
+            }
+
+            orderSection.style.display = 'flex';
+
+            // Sync with existing ordered list to keep user adjustments
+            if (!this._swimlaneOrder) {
+                this._swimlaneOrder = [];
+            }
+            // Keep only those that are in detectedLanes
+            this._swimlaneOrder = this._swimlaneOrder.filter(name => 
+                detectedLanes.some(s => s.toLowerCase() === name.toLowerCase())
+            );
+            // Append newly detected ones
+            detectedLanes.forEach(name => {
+                if (!this._swimlaneOrder.some(s => s.toLowerCase() === name.toLowerCase())) {
+                    this._swimlaneOrder.push(name);
+                }
+            });
+
+            // Render list items
+            this._renderSwimlaneOrderUI(orderList, bodyEl, dataRows, hasHeaders, firstRow);
+        }
+
+        _renderSwimlaneOrderUI(orderList, bodyEl, dataRows, hasHeaders, firstRow) {
+            orderList.innerHTML = '';
+            if (!this._swimlaneOrder || this._swimlaneOrder.length === 0) {
+                orderList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding:10px;">No swimlanes mapped</div>';
+                return;
+            }
+
+            this._swimlaneOrder.forEach((laneName, idx) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'swimlane-order-row';
+                rowEl.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; font-weight:500; color:var(--text-primary);';
+                
+                rowEl.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:600; color:#107c41; min-width:18px;">${idx + 1}.</span>
+                        <span>${laneName}</span>
+                    </div>
+                    <div style="display:flex; gap:4px;">
+                        <button class="swimlane-reorder-btn btn-up" data-idx="${idx}" style="padding:2px 6px; font-size:10px; cursor:pointer; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:3px; color:var(--text-primary);" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="swimlane-reorder-btn btn-down" data-idx="${idx}" style="padding:2px 6px; font-size:10px; cursor:pointer; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:3px; color:var(--text-primary);" ${idx === this._swimlaneOrder.length - 1 ? 'disabled' : ''}>▼</button>
+                    </div>
+                `;
+                
+                // Add event listeners to Up/Down buttons
+                const upBtn = rowEl.querySelector('.btn-up');
+                const downBtn = rowEl.querySelector('.btn-down');
+                
+                if (upBtn) {
+                    upBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (idx > 0) {
+                            const temp = this._swimlaneOrder[idx];
+                            this._swimlaneOrder[idx] = this._swimlaneOrder[idx - 1];
+                            this._swimlaneOrder[idx - 1] = temp;
+                            this._renderSwimlaneOrderUI(orderList, bodyEl, dataRows, hasHeaders, firstRow);
+                        }
+                    });
+                }
+                
+                if (downBtn) {
+                    downBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (idx < this._swimlaneOrder.length - 1) {
+                            const temp = this._swimlaneOrder[idx];
+                            this._swimlaneOrder[idx] = this._swimlaneOrder[idx + 1];
+                            this._swimlaneOrder[idx + 1] = temp;
+                            this._renderSwimlaneOrderUI(orderList, bodyEl, dataRows, hasHeaders, firstRow);
+                        }
+                    });
+                }
+                
+                orderList.appendChild(rowEl);
             });
         }
 
@@ -625,6 +812,8 @@
                     connectionLabel: rawNode.connectionLabel || '',
                     width: parseInt(rawNode.width, 10) || undefined,
                     height: parseInt(rawNode.height, 10) || undefined,
+                    x: (rawNode.x !== undefined && rawNode.x !== '' && !isNaN(parseInt(rawNode.x, 10))) ? parseInt(rawNode.x, 10) : undefined,
+                    y: (rawNode.y !== undefined && rawNode.y !== '' && !isNaN(parseInt(rawNode.y, 10))) ? parseInt(rawNode.y, 10) : undefined,
                     icon: rawNode.icon || '',
                     notes: rawNode.notes || ''
                 });
@@ -664,6 +853,21 @@
             currentState.nodes = currentState.nodes.concat(newNodes);
             currentState.edges = model().buildEdges(currentState.nodes);
 
+            // Apply custom swimlane ordering sequence if configured
+            if (this._swimlaneOrder && this._swimlaneOrder.length > 0) {
+                currentState.lanes.forEach(lane => {
+                    const laneName = (lane.name || '').trim();
+                    const orderIdx = this._swimlaneOrder.findIndex(name => name.toLowerCase() === laneName.toLowerCase());
+                    if (orderIdx !== -1) {
+                        lane.order = orderIdx;
+                    } else {
+                        lane.order = this._swimlaneOrder.length + (lane.order || 0);
+                    }
+                });
+                // Sort the array of lanes in currentState by their order
+                currentState.lanes.sort((a, b) => (a.order || 0) - (b.order || 0));
+            }
+
             // Save updated state into state history
             state().setState(currentState);
 
@@ -679,6 +883,146 @@
 
             // Close the modal
             closeModalCallback();
+        }
+
+        showAiPromptModal(fromImporter = false) {
+            const overlay = document.getElementById('modal-overlay');
+            const titleEl = document.getElementById('modal-title');
+            const bodyEl = document.getElementById('modal-body');
+            const footerEl = document.getElementById('modal-footer');
+            const modal = document.getElementById('modal');
+
+            if (!overlay || !titleEl || !bodyEl || !footerEl) return;
+
+            // Reset modal overlay hidden and configure class
+            modal.className = 'modal excel-modal';
+            overlay.classList.remove('hidden');
+
+            titleEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px;">🤖 <span>Convert Flowchart Image using AI</span></span>`;
+
+            const promptText = `You are an expert systems analyst and flowchart designer. Your task is to analyze the provided flowchart image or drawing and convert it into a structured, tab-separated values (TSV) table that can be copy-pasted directly into our process mapping application.
+
+### Important Column Schema:
+The output must be a single plain-text TSV (Tab-Separated Values) code block containing exactly these columns:
+Step ID\tStep Name\tDescription\tShape Type\tSwimlane\tColumn Swimlane\tNext Step\tYes Path (Decisions)\tNo Path (Decisions)\tYes Label\tNo Label\tX Position\tY Position\tBG Color\tFont Color\tBorder Color
+
+### Rules for each column:
+1. **Step ID**: Create a logical, unique step ID starting with S1, S2, S3, etc. Order them top-to-bottom or left-to-right following the process flow.
+2. **Step Name**: The short title of the step inside the shape (keep it short, e.g., 2-5 words).
+3. **Description**: A brief summary of what happens in this step, based on context.
+4. **Shape Type**: Choose exactly one of the following based on the visual shape:
+   - \`start\` (for start circle or oval)
+   - \`end\` (for end circle or oval)
+   - \`process\` (for normal rectangular step)
+   - \`decision\` (for diamond-shaped question step)
+   - \`document\` (for document-shaped step with wavy bottom)
+   - \`database\` (for cylinder database shape)
+   - \`manualInput\` (for slanted top manual entry shape)
+   - \`delay\` (for D-shaped half-oval delay step)
+   - \`subprocess\` (for double-bordered process rect)
+5. **Swimlane**: If the flowchart has horizontal rows indicating departments, roles, or actors (e.g. Customer, Support, Manager, System), write the exact name of the row this shape belongs to.
+6. **Column Swimlane**: If the flowchart has vertical columns indicating phases or stages (e.g. Initiation, Verification, Completion), write the name of the column it belongs to.
+7. **Next Step**: The Step ID(s) that this shape connects to. If a shape connects to multiple downstream steps, write their IDs separated by a comma (e.g., "S3, S4"). If it's an end step or has no outgoing connection, leave blank.
+8. **Yes Path (Decisions)**: If this is a \`decision\` step, write the Step ID connected by the "Yes" or true arrow.
+9. **No Path (Decisions)**: If this is a \`decision\` step, write the Step ID connected by the "No" or false arrow.
+10. **Yes Label**: If the yes path has a custom label in the diagram, specify it (defaults to "Yes").
+11. **No Label**: If the no path has a custom label in the diagram, specify it (defaults to "No").
+12. **X Position**: Assign a precise layout \`X\` coordinate in pixels to recreate the diagram structure. 
+    - The first column/step should start at \`x = 100\`.
+    - Each sequential step or horizontal move should increment \`x\` by standard column intervals (e.g., +240px per step).
+    - Parallel branches should share similar or aligned X coordinates if they occur in the same stage.
+13. **Y Position**: Assign a precise layout \`Y\` coordinate in pixels.
+    - If swimlanes are used, assign a vertical coordinate block to each swimlane (e.g., Lane 1 at y = 100 to 220, Lane 2 at y = 260 to 380, etc.).
+    - If no swimlanes are used, keep sequential nodes on the same horizontal path around the same Y, and shift Y by +150px or -150px for alternative branches or parallel processes.
+14. **BG Color / Font Color / Border Color**: Estimate the hex colors of the shapes if colored in the image, otherwise leave empty to use standard styling.
+
+### Output Formatting Constraint:
+Output ONLY the plain-text TSV table inside a standard markdown code block. Do not write any pre-amble, conversational text, explanations, or notes.`;
+
+            bodyEl.innerHTML = `
+                <div class="ai-prompt-container" style="display:flex; flex-direction:column; gap:16px;">
+                    <div style="font-size:13.5px; line-height:1.5; color:var(--text-secondary);">
+                        Convert any flowchart drawing, photo, or PDF into our direct app schema using modern AI models (like Gemini 1.5 Pro, GPT-4o, or Claude 3.5 Sonnet).
+                    </div>
+                    
+                    <div class="ai-prompt-stepper" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                        <div style="background:var(--bg-tertiary); padding:12px 14px; border-radius:var(--radius); border:1px solid var(--border); font-size:12px; line-height:1.4;">
+                            <strong style="color:#4f46e5; display:block; margin-bottom:6px; font-size:13px;">1. Copy Prompt</strong>
+                            Copy our optimized, pre-formatted prompt system instructions below.
+                        </div>
+                        <div style="background:var(--bg-tertiary); padding:12px 14px; border-radius:var(--radius); border:1px solid var(--border); font-size:12px; line-height:1.4;">
+                            <strong style="color:#06b6d4; display:block; margin-bottom:6px; font-size:13px;">2. Send to AI</strong>
+                            Go to your favorite AI model, upload your flowchart image, and paste the prompt.
+                        </div>
+                        <div style="background:var(--bg-tertiary); padding:12px 14px; border-radius:var(--radius); border:1px solid var(--border); font-size:12px; line-height:1.4;">
+                            <strong style="color:var(--success); display:block; margin-bottom:6px; font-size:13px;">3. Paste & Render</strong>
+                            Copy the generated tabular TSV block and paste it directly into our importer.
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <label style="font-size:12px; font-weight:600; color:var(--text-primary);">Optimized AI Prompt:</label>
+                            <button id="btn-copy-ai-prompt" class="btn-primary btn-sm" style="background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white; border: none; cursor: pointer; border-radius: var(--radius); padding: 5px 14px; font-size: 11.5px; font-weight: 600; display:flex; align-items:center; gap:6px; transition: transform 0.15s ease;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                                <span>📋</span> Copy Prompt
+                            </button>
+                        </div>
+                        <div class="ai-prompt-box" style="position:relative;">
+                            <textarea id="ai-prompt-text-block" readonly style="width:100%; height:280px; font-family:monospace; font-size:11px; padding:14px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); resize:none; line-height:1.5; outline:none;" tabindex="-1">${promptText}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            footerEl.innerHTML = `
+                ${fromImporter ? '<button id="excel-prompt-modal-back" class="btn-secondary" style="margin-right:auto;">← Back to Importer</button>' : ''}
+                <button id="excel-prompt-modal-close" class="btn-secondary">Close</button>
+            `;
+
+            const closeModal = () => {
+                modal.className = 'modal excel-modal';
+                overlay.classList.add('hidden');
+            };
+
+            document.getElementById('excel-prompt-modal-close').addEventListener('click', closeModal);
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+
+            if (fromImporter) {
+                document.getElementById('excel-prompt-modal-back').addEventListener('click', () => {
+                    this.showModal();
+                });
+            }
+
+            const copyBtn = document.getElementById('btn-copy-ai-prompt');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    const txtBlock = document.getElementById('ai-prompt-text-block');
+                    if (txtBlock) {
+                        txtBlock.select();
+                        
+                        const performCopy = () => {
+                            copyBtn.innerHTML = '<span>✓</span> Prompt Copied!';
+                            copyBtn.style.background = 'linear-gradient(135deg, #22c55e, #10b981)';
+                            bus().emit('toast', 'success', 'AI Prompt copied to clipboard!');
+                            
+                            setTimeout(() => {
+                                copyBtn.innerHTML = '<span>📋</span> Copy Prompt';
+                                copyBtn.style.background = 'linear-gradient(135deg, #4f46e5, #06b6d4)';
+                            }, 2000);
+                        };
+
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(txtBlock.value).then(performCopy).catch(() => {
+                                document.execCommand('copy');
+                                performCopy();
+                            });
+                        } else {
+                            document.execCommand('copy');
+                            performCopy();
+                        }
+                    }
+                });
+            }
         }
     }
 

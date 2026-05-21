@@ -25,7 +25,7 @@
             if (!nodes || nodes.length === 0) return nodes;
 
             const settings = state().getSettings();
-            const minGap = Number(settings.nodeSpacing) || 80;
+            const minGap = settings.nodeSpacing !== undefined ? Number(settings.nodeSpacing) : 30;
             const flowDirection = settings.flowDirection || 'horizontal';
 
             let dir = 'RIGHT';
@@ -209,7 +209,10 @@
                     if (!node) return;
                     node.x = (node.x || 0) + dx;
                     node.y = (node.y || 0) + dy;
-                    if (node.nextStep) shiftSubtree(node.nextStep, dx, dy, visited);
+                    if (node.nextStep) {
+                        const nextIds = node.nextStep.split(',').map(s => s.trim()).filter(Boolean);
+                        nextIds.forEach(nid => shiftSubtree(nid, dx, dy, visited));
+                    }
                     if (node.yesPath) shiftSubtree(node.yesPath, dx, dy, visited);
                     if (node.noPath) shiftSubtree(node.noPath, dx, dy, visited);
                 };
@@ -231,8 +234,13 @@
                         
                         // Find targets
                         const targets = [];
-                        if (n.nextStep && nodeMap[n.nextStep]) {
-                            targets.push({ node: nodeMap[n.nextStep], path: 'next' });
+                        if (n.nextStep) {
+                            const nextIds = n.nextStep.split(',').map(s => s.trim()).filter(Boolean);
+                            nextIds.forEach(nid => {
+                                if (nodeMap[nid]) {
+                                    targets.push({ node: nodeMap[nid], path: 'next' });
+                                }
+                            });
                         }
                         if (n.yesPath && nodeMap[n.yesPath]) {
                             targets.push({ node: nodeMap[n.yesPath], path: 'yes' });

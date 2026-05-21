@@ -152,6 +152,15 @@
                 });
             }
 
+            const aiPromptBtn = document.getElementById('btn-ai-prompt');
+            if (aiPromptBtn) {
+                aiPromptBtn.addEventListener('click', () => {
+                    if (window.PMB.ExcelImporter) {
+                        window.PMB.ExcelImporter.showAiPromptModal(false);
+                    }
+                });
+            }
+
             document.getElementById('btn-add-row').addEventListener('click', () => {
                 const node = model().createNode({ stepName: 'New Step' });
                 state().addNode(node);

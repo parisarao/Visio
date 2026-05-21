@@ -980,7 +980,7 @@
                 'Grid Snap': settings.gridSnap ? 'true' : 'false',
                 'Grid Size': settings.gridSize || 20,
                 'Lane Orientation': settings.laneOrientation || 'horizontal',
-                'Node Spacing': settings.nodeSpacing || 80,
+                'Node Spacing': settings.nodeSpacing || 30,
                 'Flow Direction': settings.flowDirection || 'horizontal',
                 'Default Shape BG': settings.defaultShapeBg || 'transparent',
                 'Default Shape Border': settings.defaultShapeBorder || '#000000'
@@ -1237,7 +1237,7 @@
                     'Grid Snap': 'true',
                     'Grid Size': 20,
                     'Lane Orientation': 'horizontal',
-                    'Node Spacing': 80,
+                    'Node Spacing': 30,
                     'Flow Direction': 'horizontal',
                     'Default Shape BG': 'transparent',
                     'Default Shape Border': '#000000'
@@ -1354,7 +1354,7 @@
                             'Grid Snap': s.gridSnap ? 'true' : 'false',
                             'Grid Size': s.gridSize || 20,
                             'Lane Orientation': s.laneOrientation || 'horizontal',
-                            'Node Spacing': s.nodeSpacing || 80,
+                            'Node Spacing': s.nodeSpacing || 30,
                             'Flow Direction': s.flowDirection || 'horizontal',
                             'Default Shape BG': s.defaultShapeBg || 'transparent',
                             'Default Shape Border': s.defaultShapeBorder || '#000000'

@@ -43,7 +43,6 @@
                 { el: 'prop-yes-flow-dir', field: 'yesFlowDir' },
                 { el: 'prop-no-flow-dir', field: 'noFlowDir' },
                 { el: 'prop-step-spacing', field: 'stepSpacing', type: 'number' },
-                { el: 'prop-next-step', field: 'nextStep' },
                 { el: 'prop-yes-path', field: 'yesPath' },
                 { el: 'prop-no-path', field: 'noPath' },
                 { el: 'prop-yes-label', field: 'yesLabel' },
@@ -100,6 +99,42 @@
                     });
                 }
             });
+
+            // Bind Next Step(s) manual controls
+            const nextStepSelect = document.getElementById('prop-next-step');
+            if (nextStepSelect) {
+                nextStepSelect.addEventListener('change', () => {
+                    if (this._updating || !this._currentNodeId) return;
+                    const val = nextStepSelect.value;
+                    if (!val) return; // ignore add connection placeholder
+                    
+                    const node = state().getNodes().find(n => n.stepId === this._currentNodeId);
+                    if (!node) return;
+                    
+                    let nextIds = (node.nextStep || '').split(',').map(s => s.trim()).filter(Boolean);
+                    if (!nextIds.includes(val)) {
+                        nextIds.push(val);
+                        const newNextStr = nextIds.join(', ');
+                        state().updateNode(this._currentNodeId, { nextStep: newNextStr });
+                        // Re-render tags and refresh dropdown to filter out added item
+                        this._renderNextStepsTags(node);
+                        this._fillSinglePanel(this._currentNodeId); 
+                    }
+                });
+            }
+
+            const clearNextBtn = document.getElementById('btn-clear-next-steps');
+            if (clearNextBtn) {
+                clearNextBtn.addEventListener('click', () => {
+                    if (this._updating || !this._currentNodeId) return;
+                    const node = state().getNodes().find(n => n.stepId === this._currentNodeId);
+                    if (!node) return;
+                    
+                    state().updateNode(this._currentNodeId, { nextStep: '' });
+                    this._renderNextStepsTags(node);
+                    this._fillSinglePanel(this._currentNodeId);
+                });
+            }
 
             // Bind multi-select coordinate inputs for bulk alignment
             const multiXInput = document.getElementById('prop-multi-x-pos');
@@ -370,6 +405,56 @@
             this._onSelectionChanged([]);
         },
 
+        _renderNextStepsTags(node) {
+            const container = document.getElementById('next-steps-tags-container');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            const nextStepVal = node.nextStep || '';
+            const nextIds = nextStepVal.split(',').map(s => s.trim()).filter(Boolean);
+            
+            if (nextIds.length === 0) {
+                container.innerHTML = '<span style="font-size:11px; color:var(--text-muted); font-style:italic; padding: 2px 0;">No connections</span>';
+                return;
+            }
+            
+            const allNodes = state().getNodes() || [];
+            nextIds.forEach(id => {
+                const targetNode = allNodes.find(n => n.stepId === id);
+                const name = targetNode ? (targetNode.stepName || 'Unnamed') : 'Missing';
+                
+                const tag = document.createElement('div');
+                tag.style.cssText = 'display:inline-flex; align-items:center; gap:4px; background:var(--accent); color:#ffffff; font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; margin:2px 0; margin-right:4px; flex-shrink:0;';
+                
+                const label = document.createElement('span');
+                label.textContent = `${id}: ${name.substring(0, 8)}${name.length > 8 ? '..' : ''}`;
+                label.title = `${id}: ${name}`;
+                tag.appendChild(label);
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.innerHTML = '&times;';
+                removeBtn.style.cssText = 'cursor:pointer; font-weight:bold; font-size:13px; line-height:1; display:inline-block; margin-left:4px; color:rgba(255,255,255,0.7);';
+                removeBtn.title = `Remove connection to ${id}`;
+                removeBtn.addEventListener('mouseover', () => { removeBtn.style.color = '#ffffff'; });
+                removeBtn.addEventListener('mouseout', () => { removeBtn.style.color = 'rgba(255,255,255,0.7)'; });
+                
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (this._updating) return;
+                    let currentIds = (node.nextStep || '').split(',').map(s => s.trim()).filter(Boolean);
+                    currentIds = currentIds.filter(cid => cid !== id);
+                    const newNextStr = currentIds.join(', ');
+                    
+                    state().updateNode(node.stepId, { nextStep: newNextStr });
+                    this._renderNextStepsTags(node);
+                    this._fillSinglePanel(node.stepId);
+                });
+                
+                tag.appendChild(removeBtn);
+                container.appendChild(tag);
+            });
+        },
+
         _updateFlowUI(shapeType) {
             const flowGroup = document.getElementById('prop-layout-flow-group');
             const decisionRow = document.getElementById('decision-flow-row');
@@ -561,6 +646,21 @@
             const allNodes = state().getNodes() || [];
             const otherNodes = allNodes.filter(n => n.stepId !== id);
 
+            // Populate prop-next-step multi-dropdown, filtering out existing connections
+            const nextStepSelect = document.getElementById('prop-next-step');
+            if (nextStepSelect) {
+                nextStepSelect.innerHTML = '<option value="">(Add Connection...)</option>';
+                const connectedIds = (node.nextStep || '').split(',').map(s => s.trim()).filter(Boolean);
+                const nextStepOptions = allNodes.filter(n => n.stepId !== id && !connectedIds.includes(n.stepId));
+                nextStepOptions.forEach(n => {
+                    const opt = document.createElement('option');
+                    opt.value = n.stepId;
+                    opt.textContent = `${n.stepId}: ${n.stepName || 'Unnamed'}`;
+                    nextStepSelect.appendChild(opt);
+                });
+                nextStepSelect.value = '';
+            }
+
             const populateDropdown = (selectElId, currentValue) => {
                 const selectEl = document.getElementById(selectElId);
                 if (!selectEl) return;
@@ -580,9 +680,9 @@
                 selectEl.value = currentValue || '';
             };
 
-            populateDropdown('prop-next-step', node.nextStep);
             populateDropdown('prop-yes-path', node.yesPath);
             populateDropdown('prop-no-path', node.noPath);
+            this._renderNextStepsTags(node);
             const yesLabelEl = document.getElementById('prop-yes-label');
             const noLabelEl = document.getElementById('prop-no-label');
             if (yesLabelEl) yesLabelEl.value = node.yesLabel || 'Yes';

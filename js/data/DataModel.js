@@ -161,8 +161,19 @@
                 }
 
                 var checkRef = function(refId, field) {
-                    if (refId && !nodes.find(function(n) { return n.stepId === refId; })) {
-                        issues.push({ type: 'error', message: '"' + node.stepId + '" ' + field + ' references missing "' + refId + '"' });
+                    if (refId) {
+                        if (field === 'Next Step') {
+                            const refIds = refId.split(',').map(s => s.trim()).filter(Boolean);
+                            refIds.forEach(id => {
+                                if (!nodes.find(function(n) { return n.stepId === id; })) {
+                                    issues.push({ type: 'error', message: '"' + node.stepId + '" ' + field + ' references missing "' + id + '"' });
+                                }
+                            });
+                        } else {
+                            if (!nodes.find(function(n) { return n.stepId === refId; })) {
+                                issues.push({ type: 'error', message: '"' + node.stepId + '" ' + field + ' references missing "' + refId + '"' });
+                            }
+                        }
                     }
                 };
                 checkRef(node.nextStep, 'Next Step');
@@ -176,7 +187,12 @@
                     issues.push({ type: 'warning', message: '"' + node.stepId + '" references missing column swimlane' });
                 }
 
-                if (node.nextStep === node.stepId) issues.push({ type: 'error', message: '"' + node.stepId + '" references itself' });
+                if (node.nextStep) {
+                    const refIds = node.nextStep.split(',').map(s => s.trim()).filter(Boolean);
+                    if (refIds.includes(node.stepId)) {
+                        issues.push({ type: 'error', message: '"' + node.stepId + '" references itself' });
+                    }
+                }
                 if (node.yesPath === node.stepId) issues.push({ type: 'error', message: '"' + node.stepId + '" Yes Path references itself' });
                 if (node.noPath === node.stepId) issues.push({ type: 'error', message: '"' + node.stepId + '" No Path references itself' });
             }
@@ -221,16 +237,19 @@
                     }
                 } else if (node.nextStep && node.shapeType !== 'end') {
                     const r = routing['next'] || {};
-                    edges.push({
-                        id: 'e-' + node.stepId + '-' + node.nextStep,
-                        source: node.stepId,
-                        target: node.nextStep,
-                        label: node.connectionLabel || '',
-                        type: 'normal',
-                        color: node.connectionLineColor || '#64748b',
-                        srcPort: r.srcPort || null,
-                        tgtPort: r.tgtPort || null,
-                        waypoints: r.waypoints || null
+                    const nextIds = node.nextStep.split(',').map(s => s.trim()).filter(Boolean);
+                    nextIds.forEach((nextId, index) => {
+                        edges.push({
+                            id: 'e-' + node.stepId + '-' + nextId + (index > 0 ? '-' + index : ''),
+                            source: node.stepId,
+                            target: nextId,
+                            label: node.connectionLabel || '',
+                            type: 'normal',
+                            color: node.connectionLineColor || '#64748b',
+                            srcPort: r.srcPort || null,
+                            tgtPort: r.tgtPort || null,
+                            waypoints: r.waypoints || null
+                        });
                     });
                 }
             }
